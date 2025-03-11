@@ -1,4 +1,3 @@
-
 import { RecipeRequest, RecipeResponse } from "../types/Recipe";
 
 const GOOGLE_API_KEY = "AIzaSyA2KjqBCn4oT8s5s6WUB1VOVfVO_eI4rXA";
@@ -68,9 +67,17 @@ Create a recipe based on this request: "${prompt}"
 
 ${isHebrew ? "Please respond in Hebrew, following RTL (right-to-left) text direction." : "Please respond in English."}
 
-Please analyze the ingredients and automatically generate appropriate tags (like "vegan", "gluten-free", "spicy", etc.) based on what you see in the recipe.
-Also, estimate the difficulty level (easy, medium, hard) and approximate cooking time.
-If possible, provide a rough calorie estimate per serving.
+Please provide:
+- Detailed ingredients with quantities
+- Step-by-step instructions
+- Automatic tags based on ingredients and style
+- Difficulty level (easy, medium, hard)
+- Preparation time breakdown
+- Calorie estimate per serving
+- Time markers for steps that need timers (e.g., "bake for 30 minutes")
+- Nutrition information if possible
+- Cuisine type
+- Seasonal recommendations if applicable
 
 Respond ONLY with a complete, valid JSON object using this exact structure, nothing else:
 {
@@ -84,7 +91,26 @@ Respond ONLY with a complete, valid JSON object using this exact structure, noth
   "tags": ["tag1", "tag2"],
   "difficulty": "easy|medium|hard",
   "estimatedTime": "30 min",
-  "calories": "300 calories per serving"
+  "calories": "300 calories per serving",
+  "timeMarkers": [
+    {
+      "step": 1,
+      "duration": 30,
+      "description": "let the dough rise"
+    }
+  ],
+  "prepTime": "15 minutes",
+  "cookTime": "45 minutes",
+  "totalTime": "1 hour",
+  "servings": 4,
+  "nutritionInfo": {
+    "calories": "300 per serving",
+    "protein": "15g",
+    "carbs": "40g",
+    "fat": "10g"
+  },
+  "seasonality": ["Spring", "Summer"],
+  "cuisine": "Mediterranean"
 }
 
 If the user is NOT asking for a recipe or food-related content, respond with:
@@ -184,9 +210,17 @@ Edit request: "${editRequest}"
 Please modify the recipe according to the edit request.
 ${isHebrew ? "Please respond in Hebrew, following RTL (right-to-left) text direction." : "Please respond in English."}
 
-Please analyze the ingredients and automatically generate appropriate tags (like "vegan", "gluten-free", "spicy", etc.) based on what you see in the recipe.
-Also, estimate the difficulty level (easy, medium, hard) and approximate cooking time.
-If possible, provide a rough calorie estimate per serving.
+Please provide:
+- Detailed ingredients with quantities
+- Step-by-step instructions
+- Automatic tags based on ingredients and style
+- Difficulty level (easy, medium, hard)
+- Preparation time breakdown
+- Calorie estimate per serving
+- Time markers for steps that need timers (e.g., "bake for 30 minutes")
+- Nutrition information if possible
+- Cuisine type
+- Seasonal recommendations if applicable
 
 Respond ONLY with a valid JSON object that has the following structure:
 {
@@ -200,7 +234,26 @@ Respond ONLY with a valid JSON object that has the following structure:
   "tags": ["tag1", "tag2"],
   "difficulty": "easy|medium|hard",
   "estimatedTime": "30 min",
-  "calories": "300 calories per serving"
+  "calories": "300 calories per serving",
+  "timeMarkers": [
+    {
+      "step": 1,
+      "duration": 30,
+      "description": "let the dough rise"
+    }
+  ],
+  "prepTime": "15 minutes",
+  "cookTime": "45 minutes",
+  "totalTime": "1 hour",
+  "servings": 4,
+  "nutritionInfo": {
+    "calories": "300 per serving",
+    "protein": "15g",
+    "carbs": "40g",
+    "fat": "10g"
+  },
+  "seasonality": ["Spring", "Summer"],
+  "cuisine": "Mediterranean"
 }
 
 The recipe should be detailed and professional.

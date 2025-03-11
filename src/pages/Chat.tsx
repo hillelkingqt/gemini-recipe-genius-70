@@ -22,7 +22,7 @@ const Chat: React.FC = () => {
         description: `"${recipe.name}" has been added to your collection.`,
       });
       
-      // Navigate to the specific recipe in the recipes page
+      // Navigate to recipes page with specific recipe ID
       navigate(`/recipes?id=${newRecipe.id}`);
       
     } catch (error) {

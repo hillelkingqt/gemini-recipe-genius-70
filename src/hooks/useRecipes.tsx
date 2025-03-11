@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { Recipe, RecipeResponse } from '../types/Recipe';
+import { Recipe, RecipeResponse } from '@/types/Recipe';
 
 export function useRecipes() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -19,7 +18,6 @@ export function useRecipes() {
         setRecipes(recipesWithDates);
       } catch (error) {
         console.error('Error parsing saved recipes:', error);
-        // If there's an error, initialize with empty array
         setRecipes([]);
       }
     }
@@ -30,7 +28,7 @@ export function useRecipes() {
     localStorage.setItem('recipes', JSON.stringify(recipes));
   }, [recipes]);
   
-  const addRecipe = (recipeResponse: RecipeResponse) => {
+  const addRecipe = (recipeResponse: RecipeResponse, status: 'draft' | 'accepted' | 'rejected' = 'accepted') => {
     const newRecipe: Recipe = {
       id: Date.now().toString(),
       name: recipeResponse.name,
@@ -38,8 +36,8 @@ export function useRecipes() {
       instructions: recipeResponse.instructions,
       createdAt: new Date(),
       isRTL: recipeResponse.isRTL || false,
-      ingredientsLabel: recipeResponse.ingredientsLabel,
-      instructionsLabel: recipeResponse.instructionsLabel,
+      ingredientsLabel: recipeResponse.ingredientsLabel || (recipeResponse.isRTL ? 'מצרכים' : 'Ingredients'),
+      instructionsLabel: recipeResponse.instructionsLabel || (recipeResponse.isRTL ? 'אופן ההכנה' : 'Instructions'),
       isRecipe: recipeResponse.isRecipe,
       content: recipeResponse.content,
       isFavorite: false,
@@ -48,7 +46,16 @@ export function useRecipes() {
       estimatedTime: recipeResponse.estimatedTime || '',
       calories: recipeResponse.calories || '',
       notes: '',
-      rating: 0
+      rating: 0,
+      status,
+      timeMarkers: recipeResponse.timeMarkers || [],
+      prepTime: recipeResponse.prepTime,
+      cookTime: recipeResponse.cookTime,
+      totalTime: recipeResponse.totalTime,
+      servings: recipeResponse.servings || 4,
+      nutritionInfo: recipeResponse.nutritionInfo,
+      seasonality: recipeResponse.seasonality,
+      cuisine: recipeResponse.cuisine
     };
     
     setRecipes(prevRecipes => [newRecipe, ...prevRecipes]);
@@ -95,6 +102,22 @@ export function useRecipes() {
     );
   };
   
+  const updateRecipeStatus = (id: string, status: 'draft' | 'accepted' | 'rejected') => {
+    setRecipes(prevRecipes => 
+      prevRecipes.map(recipe => 
+        recipe.id === id ? { ...recipe, status } : recipe
+      )
+    );
+  };
+  
+  const updateServings = (id: string, servings: number) => {
+    setRecipes(prevRecipes => 
+      prevRecipes.map(recipe => 
+        recipe.id === id ? { ...recipe, servings } : recipe
+      )
+    );
+  };
+
   return {
     recipes,
     addRecipe,
@@ -103,6 +126,8 @@ export function useRecipes() {
     updateRecipe,
     toggleFavorite,
     rateRecipe,
-    addNote
+    addNote,
+    updateRecipeStatus,
+    updateServings,
   };
 }
