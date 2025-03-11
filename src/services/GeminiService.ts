@@ -1,4 +1,3 @@
-
 import { RecipeRequest, RecipeResponse } from "../types/Recipe";
 
 const GOOGLE_API_KEY = "AIzaSyA2KjqBCn4oT8s5s6WUB1VOVfVO_eI4rXA";
@@ -63,35 +62,43 @@ export class GeminiService {
     
     return `
 You are a professional chef specialized in creating detailed recipes.
-I need you to create a recipe based on this request: "${prompt}"
+Create a recipe based on this request: "${prompt}"
 
-Respond ONLY with a valid JSON object that has the following structure:
+Respond ONLY with a complete, valid JSON object using this exact structure, nothing else:
 {
   "name": "Recipe Name",
-  "ingredients": ["ingredient 1", "ingredient 2", ...],
-  "instructions": ["step 1", "step 2", ...]
+  "ingredients": ["ingredient 1", "ingredient 2"],
+  "instructions": ["step 1", "step 2"]
 }
 
-The recipe should be detailed and professional. 
-Please respond in ${language}.
-Do not include any text before or after the JSON object.
-Do not include markdown formatting or code blocks.
-`;
+The recipe should be detailed and professional.
+Use language: ${language}
+Do not add any text, formatting, or explanation outside the JSON.`;
   }
 
   private parseRecipeResponse(response: any): RecipeResponse {
     try {
+      console.log('Raw API response:', response);
       const content = response.candidates[0].content.parts[0].text;
+      console.log('Response content:', content);
       
-      // Extract the JSON part from the response
+      // Try to find a JSON object in the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       
       if (!jsonMatch) {
+        console.error('No JSON object found in response');
         throw new Error('Failed to extract JSON from response');
       }
       
       const jsonStr = jsonMatch[0];
+      console.log('Extracted JSON:', jsonStr);
+      
       const recipe = JSON.parse(jsonStr);
+      
+      // Validate required fields
+      if (!recipe.name || !Array.isArray(recipe.ingredients) || !Array.isArray(recipe.instructions)) {
+        throw new Error('Invalid recipe format');
+      }
       
       return {
         name: recipe.name,
