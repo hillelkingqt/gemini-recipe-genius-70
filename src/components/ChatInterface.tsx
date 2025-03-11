@@ -2,16 +2,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Send } from 'lucide-react';
+import { Loader2, Send, Check, X, Edit } from 'lucide-react';
 import { geminiService } from '@/services/GeminiService';
 import { RecipeResponse } from '@/types/Recipe';
 import { useToast } from '@/components/ui/use-toast';
 import RecipeCard from './RecipeCard';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Message {
   id: string;
   text: string;
   sender: 'user' | 'ai';
+  isRTL?: boolean;
 }
 
 interface ChatInterfaceProps {
@@ -26,12 +28,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
   const [editRequest, setEditRequest] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const editFormRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
   // Auto-scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+  
+  // Auto-scroll to edit form when it appears
+  useEffect(() => {
+    if (isEditing) {
+      setTimeout(() => {
+        editFormRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  }, [isEditing]);
   
   // Initial greeting message
   useEffect(() => {
@@ -51,7 +63,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
     const userMessage: Message = {
       id: Date.now().toString(),
       text: input,
-      sender: 'user'
+      sender: 'user',
+      isRTL: detectLanguage(input) === 'he'
     };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
@@ -67,13 +80,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
       // Add AI message
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: `I've created a recipe for "${recipe.name}" based on your request.`,
-        sender: 'ai'
+        text: recipe.isRecipe 
+          ? `I've created a recipe for "${recipe.name}" based on your request.`
+          : recipe.content || "I can only help with recipes and food-related questions.",
+        sender: 'ai',
+        isRTL: recipe.isRTL
       };
       setMessages(prev => [...prev, aiMessage]);
       
-      // Set the generated recipe
-      setGeneratedRecipe(recipe);
+      // Set the generated recipe if it's a recipe
+      if (recipe.isRecipe) {
+        setGeneratedRecipe(recipe);
+      }
     } catch (error) {
       console.error('Error generating recipe:', error);
       // Add error message
@@ -104,7 +122,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
       const userMessage: Message = {
         id: Date.now().toString(),
         text: `Can you modify the recipe? ${editRequest}`,
-        sender: 'user'
+        sender: 'user',
+        isRTL: detectLanguage(editRequest) === 'he'
       };
       setMessages(prev => [...prev, userMessage]);
       
@@ -119,7 +138,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: `I've updated the recipe for "${updatedRecipe.name}" based on your request.`,
-        sender: 'ai'
+        sender: 'ai',
+        isRTL: updatedRecipe.isRTL
       };
       setMessages(prev => [...prev, aiMessage]);
       
@@ -187,72 +207,99 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
   };
   
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <div className="flex flex-col space-y-4">
-          {messages.map((message) => (
-            <div 
-              key={message.id} 
-              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div 
-                className={`message-bubble ${message.sender === 'user' ? 'user-message' : 'ai-message'}`}
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <AnimatePresence>
+          <motion.div 
+            className="flex flex-col space-y-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            {messages.map((message) => (
+              <motion.div 
+                key={message.id} 
+                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
               >
-                {message.text}
-              </div>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
+                <div 
+                  className={`message-bubble ${message.sender === 'user' ? 'user-message' : 'ai-message'} ${message.isRTL ? 'rtl text-right' : 'ltr text-left'}`}
+                  style={{ maxWidth: '80%', borderRadius: '18px', padding: '12px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+                >
+                  {message.text}
+                </div>
+              </motion.div>
+            ))}
+            <div ref={messagesEndRef} />
+          </motion.div>
+        </AnimatePresence>
         
         {generatedRecipe && (
-          <div className="recipe-section mt-4 p-4 bg-recipe-cream rounded-lg shadow-md">
+          <motion.div 
+            className="recipe-section mt-6 p-6 bg-recipe-cream rounded-xl shadow-lg"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+          >
             <RecipeCard 
-              recipe={generatedRecipe} 
-              showActions={true}
+              recipe={generatedRecipe}
+              showActions={false}
               onEdit={() => {}}
               onDelete={() => {}}
             />
             
-            <div className="mt-4 flex flex-col space-y-4">
-              <div className="flex justify-between gap-2">
+            <div className="mt-6 flex flex-col space-y-4">
+              <div className="flex flex-wrap justify-between gap-3">
                 <Button
                   onClick={handleAcceptRecipe}
-                  className="flex-1 bg-recipe-green hover:bg-recipe-green/90"
+                  className="flex-1 bg-recipe-green hover:bg-recipe-green/90 min-w-[120px]"
                 >
+                  <Check className="h-4 w-4 mr-2" />
                   Accept Recipe
                 </Button>
                 <Button 
                   onClick={() => setIsEditing(true)}
                   variant="outline"
-                  className="flex-1 border-recipe-green text-recipe-green"
+                  className="flex-1 border-recipe-green text-recipe-green min-w-[120px]"
                 >
+                  <Edit className="h-4 w-4 mr-2" />
                   Edit Recipe
                 </Button>
                 <Button
                   onClick={handleRejectRecipe}
                   variant="outline"
-                  className="flex-1 border-destructive text-destructive"
+                  className="flex-1 border-destructive text-destructive min-w-[120px]"
                 >
+                  <X className="h-4 w-4 mr-2" />
                   Reject Recipe
                 </Button>
               </div>
               
               {isEditing && (
-                <div className="flex flex-col space-y-2">
+                <motion.div 
+                  className="flex flex-col space-y-3 mt-4 p-4 bg-white rounded-lg shadow-md"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  transition={{ duration: 0.3 }}
+                  ref={editFormRef}
+                >
+                  <h3 className="font-medium text-gray-700">What would you like to change?</h3>
                   <Input
                     value={editRequest}
                     onChange={(e) => setEditRequest(e.target.value)}
-                    placeholder="What would you like to change about this recipe?"
-                    className="bg-white"
+                    placeholder="Ex: Add more spices, make it vegetarian, use less oil..."
+                    className="bg-white border-gray-300"
+                    dir={detectLanguage(editRequest) === 'he' ? 'rtl' : 'ltr'}
                   />
                   <div className="flex space-x-2">
                     <Button
                       onClick={handleEditRecipe}
-                      disabled={isEditing && !editRequest.trim()}
+                      disabled={!editRequest.trim()}
                       className="bg-recipe-orange hover:bg-recipe-orange/90 flex-1"
                     >
-                      {isEditing ? (
+                      {isEditing && editRequest.trim() ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Updating...
@@ -262,38 +309,43 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
                       )}
                     </Button>
                     <Button
-                      onClick={() => setIsEditing(false)}
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditRequest('');
+                      }}
                       variant="outline"
                       className="flex-1"
                     >
                       Cancel
                     </Button>
                   </div>
-                </div>
+                </motion.div>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
       
-      <div className="p-4 border-t">
-        <div className="flex space-x-2">
+      <div className="p-6 bg-white border-t shadow-inner">
+        <div className="max-w-3xl mx-auto flex space-x-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Describe a recipe you'd like me to create..."
             onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
             disabled={isLoading}
+            className="bg-white border-gray-300"
+            dir={detectLanguage(input) === 'he' ? 'rtl' : 'ltr'}
           />
           <Button 
             onClick={handleSendMessage} 
             disabled={isLoading || !input.trim()}
-            className="bg-recipe-green hover:bg-recipe-green/90"
+            className="bg-recipe-green hover:bg-recipe-green/90 flex-shrink-0 min-w-[50px]"
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              <Send className="h-4 w-4" />
+              <Send className="h-5 w-5" />
             )}
           </Button>
         </div>

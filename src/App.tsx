@@ -18,12 +18,14 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-          <Routes>
-            <Route path="/" element={<Chat />} />
-            <Route path="/recipes" element={<Recipes />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
           <Navigation />
+          <main className="max-w-7xl mx-auto pb-16">
+            <Routes>
+              <Route path="/" element={<Chat />} />
+              <Route path="/recipes" element={<Recipes />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </main>
         </div>
       </BrowserRouter>
     </TooltipProvider>

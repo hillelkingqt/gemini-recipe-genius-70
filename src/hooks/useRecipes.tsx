@@ -10,9 +10,17 @@ export function useRecipes() {
     const savedRecipes = localStorage.getItem('recipes');
     if (savedRecipes) {
       try {
-        setRecipes(JSON.parse(savedRecipes));
+        const parsedRecipes = JSON.parse(savedRecipes);
+        // Convert string dates back to Date objects
+        const recipesWithDates = parsedRecipes.map((recipe: any) => ({
+          ...recipe,
+          createdAt: new Date(recipe.createdAt)
+        }));
+        setRecipes(recipesWithDates);
       } catch (error) {
         console.error('Error parsing saved recipes:', error);
+        // If there's an error, initialize with empty array
+        setRecipes([]);
       }
     }
   }, []);
@@ -29,6 +37,10 @@ export function useRecipes() {
       ingredients: recipeResponse.ingredients,
       instructions: recipeResponse.instructions,
       createdAt: new Date(),
+      isRTL: recipeResponse.isRTL || false,
+      ingredientsLabel: recipeResponse.ingredientsLabel,
+      instructionsLabel: recipeResponse.instructionsLabel,
+      isRecipe: recipeResponse.isRecipe
     };
     
     setRecipes(prevRecipes => [...prevRecipes, newRecipe]);
@@ -43,10 +55,19 @@ export function useRecipes() {
     return recipes.find(recipe => recipe.id === id);
   };
   
+  const updateRecipe = (id: string, updatedRecipe: Partial<Recipe>) => {
+    setRecipes(prevRecipes => 
+      prevRecipes.map(recipe => 
+        recipe.id === id ? { ...recipe, ...updatedRecipe } : recipe
+      )
+    );
+  };
+  
   return {
     recipes,
     addRecipe,
     removeRecipe,
     getRecipe,
+    updateRecipe
   };
 }

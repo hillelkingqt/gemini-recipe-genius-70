@@ -84,6 +84,15 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* RTL support */
+  .rtl {
+    direction: rtl;
+  }
+  
+  .ltr {
+    direction: ltr;
+  }
 }
 
 @layer utilities {
@@ -100,10 +109,65 @@
   }
   
   .user-message {
-    @apply bg-recipe-lightOrange text-black self-end;
+    @apply bg-gray-100 text-black self-end shadow-sm;
   }
   
   .ai-message {
-    @apply bg-recipe-lightGreen text-black self-start;
+    @apply bg-primary/10 text-black self-start shadow-sm;
+  }
+  
+  /* Additional animations */
+  .hover-scale {
+    @apply transition-transform duration-200 hover:scale-105;
+  }
+  
+  .hover-glow {
+    @apply transition-all duration-300 hover:shadow-[0_0_15px_rgba(46,125,50,0.3)];
+  }
+  
+  .card-rise {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-md;
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-animation {
+  background: linear-gradient(90deg, var(--recipe-green-light) 0%, var(--recipe-green) 50%, var(--recipe-green-dark) 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 5s ease infinite;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000;
+  }
+  
+  h1 {
+    font-size: 18pt;
+    margin-bottom: 10mm;
+  }
+  
+  h2 {
+    font-size: 14pt;
+    margin-top: 5mm;
+    margin-bottom: 3mm;
   }
 }

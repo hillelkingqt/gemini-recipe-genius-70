@@ -5,6 +5,8 @@ import ChatInterface from '@/components/ChatInterface';
 import { RecipeResponse } from '@/types/Recipe';
 import { useRecipes } from '@/hooks/useRecipes';
 import { useToast } from '@/components/ui/use-toast';
+import { CookingPot } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const Chat: React.FC = () => {
   const { addRecipe } = useRecipes();
@@ -35,10 +37,21 @@ const Chat: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen">
-      <div className="bg-recipe-green text-white p-4">
-        <h1 className="text-2xl font-bold text-center">Recipe Genius</h1>
-      </div>
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
+      <motion.div 
+        className="bg-gradient-to-r from-recipe-green/90 to-recipe-green text-white py-4 px-6"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="max-w-7xl mx-auto flex items-center justify-center">
+          <CookingPot className="h-6 w-6 mr-3" />
+          <h1 className="text-2xl font-bold">Recipe Genius</h1>
+        </div>
+        <p className="text-center mt-2 text-white/80 max-w-xl mx-auto">
+          Tell me what you'd like to cook, and I'll create a personalized recipe just for you
+        </p>
+      </motion.div>
       
       <div className="flex-1 overflow-hidden">
         <ChatInterface onRecipeGenerated={handleRecipeGenerated} />

@@ -5,6 +5,11 @@ export interface Recipe {
   ingredients: string[];
   instructions: string[];
   createdAt: Date;
+  isRTL?: boolean;
+  ingredientsLabel?: string;
+  instructionsLabel?: string;
+  isRecipe?: boolean;
+  content?: string;
 }
 
 export interface RecipeRequest {
@@ -16,4 +21,9 @@ export interface RecipeResponse {
   name: string;
   ingredients: string[];
   instructions: string[];
+  isRTL?: boolean;
+  ingredientsLabel?: string;
+  instructionsLabel?: string;
+  isRecipe?: boolean;
+  content?: string;
 }

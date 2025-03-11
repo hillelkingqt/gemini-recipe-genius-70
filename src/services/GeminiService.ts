@@ -1,3 +1,4 @@
+
 import { RecipeRequest, RecipeResponse } from "../types/Recipe";
 
 const GOOGLE_API_KEY = "AIzaSyA2KjqBCn4oT8s5s6WUB1VOVfVO_eI4rXA";
@@ -37,7 +38,7 @@ export class GeminiService {
               temperature: 0.7,
               topK: 40,
               topP: 0.95,
-              maxOutputTokens: 2048,
+              maxOutputTokens: 4096,
             },
           }),
         }
@@ -50,7 +51,7 @@ export class GeminiService {
         throw new Error('Failed to generate recipe');
       }
 
-      return this.parseRecipeResponse(data);
+      return this.parseRecipeResponse(data, request.language || 'en');
     } catch (error) {
       console.error('Error generating recipe:', error);
       throw error;
@@ -59,31 +60,56 @@ export class GeminiService {
 
   private createPrompt(request: RecipeRequest): string {
     const { prompt, language = 'en' } = request;
+    const isHebrew = language === 'he';
     
     return `
 You are a professional chef specialized in creating detailed recipes.
 Create a recipe based on this request: "${prompt}"
 
+${isHebrew ? "Please respond in Hebrew, following RTL (right-to-left) text direction." : "Please respond in English."}
+
 Respond ONLY with a complete, valid JSON object using this exact structure, nothing else:
 {
   "name": "Recipe Name",
   "ingredients": ["ingredient 1", "ingredient 2"],
-  "instructions": ["step 1", "step 2"]
+  "instructions": ["step 1", "step 2"],
+  "isRecipe": true,
+  ${isHebrew ? '"isRTL": true,' : '"isRTL": false,'}
+  ${isHebrew ? '"ingredientsLabel": "מצרכים",' : '"ingredientsLabel": "Ingredients",'}
+  ${isHebrew ? '"instructionsLabel": "אופן ההכנה"' : '"instructionsLabel": "Instructions"'}
+}
+
+If the user is NOT asking for a recipe or food-related content, respond with:
+{
+  "name": "Response",
+  "content": "Your helpful response here",
+  "isRecipe": false,
+  ${isHebrew ? '"isRTL": true' : '"isRTL": false'}
 }
 
 The recipe should be detailed and professional.
-Use language: ${language}
 Do not add any text, formatting, or explanation outside the JSON.`;
   }
 
-  private parseRecipeResponse(response: any): RecipeResponse {
+  private parseRecipeResponse(response: any, language: string): RecipeResponse {
     try {
       console.log('Raw API response:', response);
+      
+      // Check if we have content in the response
+      if (!response.candidates || 
+          !response.candidates[0] || 
+          !response.candidates[0].content ||
+          !response.candidates[0].content.parts ||
+          !response.candidates[0].content.parts[0] ||
+          !response.candidates[0].content.parts[0].text) {
+        throw new Error('Invalid API response structure');
+      }
+      
       const content = response.candidates[0].content.parts[0].text;
       console.log('Response content:', content);
       
       // Try to find a JSON object in the response
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonMatch = content.match(/(\{[\s\S]*\})/);
       
       if (!jsonMatch) {
         console.error('No JSON object found in response');
@@ -93,17 +119,33 @@ Do not add any text, formatting, or explanation outside the JSON.`;
       const jsonStr = jsonMatch[0];
       console.log('Extracted JSON:', jsonStr);
       
-      const recipe = JSON.parse(jsonStr);
+      const parsedResult = JSON.parse(jsonStr);
       
-      // Validate required fields
-      if (!recipe.name || !Array.isArray(recipe.ingredients) || !Array.isArray(recipe.instructions)) {
+      if (parsedResult.isRecipe === false) {
+        // This is a non-recipe response
+        return {
+          name: parsedResult.name || "Response",
+          ingredients: [],
+          instructions: [],
+          isRecipe: false,
+          isRTL: parsedResult.isRTL || false,
+          content: parsedResult.content || "I can only help with recipes and food-related questions."
+        };
+      }
+      
+      // Validate required fields for recipes
+      if (!parsedResult.name || !Array.isArray(parsedResult.ingredients) || !Array.isArray(parsedResult.instructions)) {
         throw new Error('Invalid recipe format');
       }
       
       return {
-        name: recipe.name,
-        ingredients: recipe.ingredients,
-        instructions: recipe.instructions
+        name: parsedResult.name,
+        ingredients: parsedResult.ingredients,
+        instructions: parsedResult.instructions,
+        isRecipe: true,
+        isRTL: parsedResult.isRTL || false,
+        ingredientsLabel: parsedResult.ingredientsLabel || (language === 'he' ? 'מצרכים' : 'Ingredients'),
+        instructionsLabel: parsedResult.instructionsLabel || (language === 'he' ? 'אופן ההכנה' : 'Instructions')
       };
     } catch (error) {
       console.error('Error parsing recipe response:', error);
@@ -113,6 +155,7 @@ Do not add any text, formatting, or explanation outside the JSON.`;
 
   async editRecipe(originalRecipe: RecipeResponse, editRequest: string, language: string = 'en'): Promise<RecipeResponse> {
     try {
+      const isHebrew = language === 'he';
       const prompt = `
 Original recipe:
 ${JSON.stringify(originalRecipe, null, 2)}
@@ -120,15 +163,20 @@ ${JSON.stringify(originalRecipe, null, 2)}
 Edit request: "${editRequest}"
 
 Please modify the recipe according to the edit request.
+${isHebrew ? "Please respond in Hebrew, following RTL (right-to-left) text direction." : "Please respond in English."}
+
 Respond ONLY with a valid JSON object that has the following structure:
 {
   "name": "Recipe Name",
   "ingredients": ["ingredient 1", "ingredient 2", ...],
-  "instructions": ["step 1", "step 2", ...]
+  "instructions": ["step 1", "step 2", ...],
+  "isRecipe": true,
+  ${isHebrew ? '"isRTL": true,' : '"isRTL": false,'}
+  ${isHebrew ? '"ingredientsLabel": "מצרכים",' : '"ingredientsLabel": "Ingredients",'}
+  ${isHebrew ? '"instructionsLabel": "אופן ההכנה"' : '"instructionsLabel": "Instructions"'}
 }
 
 The recipe should be detailed and professional.
-Please respond in ${language}.
 Do not include any text before or after the JSON object.
 Do not include markdown formatting or code blocks.
 `;
@@ -154,7 +202,7 @@ Do not include markdown formatting or code blocks.
               temperature: 0.7,
               topK: 40,
               topP: 0.95,
-              maxOutputTokens: 2048,
+              maxOutputTokens: 4096,
             },
           }),
         }
@@ -167,7 +215,7 @@ Do not include markdown formatting or code blocks.
         throw new Error('Failed to edit recipe');
       }
 
-      return this.parseRecipeResponse(data);
+      return this.parseRecipeResponse(data, language);
     } catch (error) {
       console.error('Error editing recipe:', error);
       throw error;
