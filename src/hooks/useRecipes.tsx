@@ -40,11 +40,43 @@ export function useRecipes() {
       isRTL: recipeResponse.isRTL || false,
       ingredientsLabel: recipeResponse.ingredientsLabel,
       instructionsLabel: recipeResponse.instructionsLabel,
-      isRecipe: recipeResponse.isRecipe
+      isRecipe: recipeResponse.isRecipe,
+      content: recipeResponse.content,
+      isFavorite: false,
+      tags: recipeResponse.tags || [],
+      difficulty: recipeResponse.difficulty || 'medium',
+      estimatedTime: recipeResponse.estimatedTime || '',
+      calories: recipeResponse.calories || '',
+      notes: '',
+      rating: 0
     };
     
-    setRecipes(prevRecipes => [...prevRecipes, newRecipe]);
+    setRecipes(prevRecipes => [newRecipe, ...prevRecipes]);
     return newRecipe;
+  };
+  
+  const toggleFavorite = (id: string) => {
+    setRecipes(prevRecipes => 
+      prevRecipes.map(recipe => 
+        recipe.id === id ? { ...recipe, isFavorite: !recipe.isFavorite } : recipe
+      )
+    );
+  };
+  
+  const rateRecipe = (id: string, rating: number) => {
+    setRecipes(prevRecipes => 
+      prevRecipes.map(recipe => 
+        recipe.id === id ? { ...recipe, rating } : recipe
+      )
+    );
+  };
+  
+  const addNote = (id: string, note: string) => {
+    setRecipes(prevRecipes => 
+      prevRecipes.map(recipe => 
+        recipe.id === id ? { ...recipe, notes: note } : recipe
+      )
+    );
   };
   
   const removeRecipe = (id: string) => {
@@ -68,6 +100,9 @@ export function useRecipes() {
     addRecipe,
     removeRecipe,
     getRecipe,
-    updateRecipe
+    updateRecipe,
+    toggleFavorite,
+    rateRecipe,
+    addNote
   };
 }

@@ -10,6 +10,13 @@ export interface Recipe {
   instructionsLabel?: string;
   isRecipe?: boolean;
   content?: string;
+  isFavorite?: boolean;
+  tags?: string[];
+  difficulty?: 'easy' | 'medium' | 'hard';
+  estimatedTime?: string;
+  calories?: string;
+  notes?: string;
+  rating?: number;
 }
 
 export interface RecipeRequest {
@@ -26,4 +33,8 @@ export interface RecipeResponse {
   instructionsLabel?: string;
   isRecipe?: boolean;
   content?: string;
+  tags?: string[];
+  difficulty?: 'easy' | 'medium' | 'hard';
+  estimatedTime?: string;
+  calories?: string;
 }

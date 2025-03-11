@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Send, Check, X, Edit } from 'lucide-react';
+import { Loader2, Send, Check, X, Edit, AlertCircle } from 'lucide-react';
 import { geminiService } from '@/services/GeminiService';
 import { RecipeResponse } from '@/types/Recipe';
 import { useToast } from '@/components/ui/use-toast';
@@ -27,6 +27,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
   const [generatedRecipe, setGeneratedRecipe] = useState<RecipeResponse | null>(null);
   const [editRequest, setEditRequest] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingInProgress, setIsEditingInProgress] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -115,7 +116,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
   const handleEditRecipe = async () => {
     if (!editRequest.trim() || !generatedRecipe) return;
     
-    setIsEditing(true);
+    setIsEditingInProgress(true);
     
     try {
       // Add user message
@@ -164,6 +165,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
         description: "There was an error updating your recipe. Please try again."
       });
     } finally {
+      setIsEditingInProgress(false);
       setIsEditing(false);
     }
   };
@@ -172,11 +174,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
     if (generatedRecipe) {
       onRecipeGenerated(generatedRecipe);
       setGeneratedRecipe(null);
-      
-      toast({
-        title: "Recipe Saved",
-        description: "Your recipe has been added to your collection.",
-      });
       
       // Add confirmation message
       const confirmationMessage: Message = {
@@ -207,7 +204,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
   };
   
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <AnimatePresence>
           <motion.div 
@@ -225,8 +222,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
                 transition={{ duration: 0.3 }}
               >
                 <div 
-                  className={`message-bubble ${message.sender === 'user' ? 'user-message' : 'ai-message'} ${message.isRTL ? 'rtl text-right' : 'ltr text-left'}`}
-                  style={{ maxWidth: '80%', borderRadius: '18px', padding: '12px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+                  className={`message-bubble ${message.sender === 'user' ? 'bg-recipe-green/10 text-black' : 'bg-gray-100 text-black'} ${message.isRTL ? 'rtl text-right' : 'ltr text-left'}`}
+                  style={{ 
+                    maxWidth: '80%', 
+                    borderRadius: '18px', 
+                    padding: '12px 16px', 
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                  }}
                 >
                   {message.text}
                 </div>
@@ -257,7 +259,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
                   className="flex-1 bg-recipe-green hover:bg-recipe-green/90 min-w-[120px]"
                 >
                   <Check className="h-4 w-4 mr-2" />
-                  Accept Recipe
+                  {generatedRecipe.isRTL ? 'אישור המתכון' : 'Accept Recipe'}
                 </Button>
                 <Button 
                   onClick={() => setIsEditing(true)}
@@ -265,7 +267,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
                   className="flex-1 border-recipe-green text-recipe-green min-w-[120px]"
                 >
                   <Edit className="h-4 w-4 mr-2" />
-                  Edit Recipe
+                  {generatedRecipe.isRTL ? 'עריכת המתכון' : 'Edit Recipe'}
                 </Button>
                 <Button
                   onClick={handleRejectRecipe}
@@ -273,7 +275,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
                   className="flex-1 border-destructive text-destructive min-w-[120px]"
                 >
                   <X className="h-4 w-4 mr-2" />
-                  Reject Recipe
+                  {generatedRecipe.isRTL ? 'דחייה' : 'Reject Recipe'}
                 </Button>
               </div>
               
@@ -285,27 +287,32 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
                   transition={{ duration: 0.3 }}
                   ref={editFormRef}
                 >
-                  <h3 className="font-medium text-gray-700">What would you like to change?</h3>
+                  <h3 className={`font-medium text-gray-700 ${generatedRecipe.isRTL ? 'text-right' : 'text-left'}`}>
+                    {generatedRecipe.isRTL ? 'מה תרצה לשנות במתכון?' : 'What would you like to change?'}
+                  </h3>
                   <Input
                     value={editRequest}
                     onChange={(e) => setEditRequest(e.target.value)}
-                    placeholder="Ex: Add more spices, make it vegetarian, use less oil..."
+                    placeholder={generatedRecipe.isRTL ? 
+                      "לדוגמה: הוסף יותר תבלינים, הפוך לצמחוני, השתמש בפחות שמן..." : 
+                      "Ex: Add more spices, make it vegetarian, use less oil..."}
                     className="bg-white border-gray-300"
                     dir={detectLanguage(editRequest) === 'he' ? 'rtl' : 'ltr'}
+                    disabled={isEditingInProgress}
                   />
                   <div className="flex space-x-2">
                     <Button
                       onClick={handleEditRecipe}
-                      disabled={!editRequest.trim()}
+                      disabled={!editRequest.trim() || isEditingInProgress}
                       className="bg-recipe-orange hover:bg-recipe-orange/90 flex-1"
                     >
-                      {isEditing && editRequest.trim() ? (
+                      {isEditingInProgress ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Updating...
+                          {generatedRecipe.isRTL ? 'מעדכן...' : 'Updating...'}
                         </>
                       ) : (
-                        "Send Edit Request"
+                        generatedRecipe.isRTL ? 'שלח בקשת עריכה' : 'Send Edit Request'
                       )}
                     </Button>
                     <Button
@@ -315,8 +322,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
                       }}
                       variant="outline"
                       className="flex-1"
+                      disabled={isEditingInProgress}
                     >
-                      Cancel
+                      {generatedRecipe.isRTL ? 'ביטול' : 'Cancel'}
                     </Button>
                   </div>
                 </motion.div>

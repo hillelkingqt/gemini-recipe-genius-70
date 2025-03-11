@@ -68,6 +68,10 @@ Create a recipe based on this request: "${prompt}"
 
 ${isHebrew ? "Please respond in Hebrew, following RTL (right-to-left) text direction." : "Please respond in English."}
 
+Please analyze the ingredients and automatically generate appropriate tags (like "vegan", "gluten-free", "spicy", etc.) based on what you see in the recipe.
+Also, estimate the difficulty level (easy, medium, hard) and approximate cooking time.
+If possible, provide a rough calorie estimate per serving.
+
 Respond ONLY with a complete, valid JSON object using this exact structure, nothing else:
 {
   "name": "Recipe Name",
@@ -76,7 +80,11 @@ Respond ONLY with a complete, valid JSON object using this exact structure, noth
   "isRecipe": true,
   ${isHebrew ? '"isRTL": true,' : '"isRTL": false,'}
   ${isHebrew ? '"ingredientsLabel": "מצרכים",' : '"ingredientsLabel": "Ingredients",'}
-  ${isHebrew ? '"instructionsLabel": "אופן ההכנה"' : '"instructionsLabel": "Instructions"'}
+  ${isHebrew ? '"instructionsLabel": "אופן ההכנה",' : '"instructionsLabel": "Instructions",'}
+  "tags": ["tag1", "tag2"],
+  "difficulty": "easy|medium|hard",
+  "estimatedTime": "30 min",
+  "calories": "300 calories per serving"
 }
 
 If the user is NOT asking for a recipe or food-related content, respond with:
@@ -88,7 +96,8 @@ If the user is NOT asking for a recipe or food-related content, respond with:
 }
 
 The recipe should be detailed and professional.
-Do not add any text, formatting, or explanation outside the JSON.`;
+Do not add any text, formatting, or explanation outside the JSON.
+The JSON must be valid and parseable.`;
   }
 
   private parseRecipeResponse(response: any, language: string): RecipeResponse {
@@ -108,8 +117,9 @@ Do not add any text, formatting, or explanation outside the JSON.`;
       const content = response.candidates[0].content.parts[0].text;
       console.log('Response content:', content);
       
-      // Try to find a JSON object in the response
-      const jsonMatch = content.match(/(\{[\s\S]*\})/);
+      // Try to find a JSON object in the response - more robust regex
+      const jsonRegex = /\{[\s\S]*\}/g;
+      const jsonMatch = content.match(jsonRegex);
       
       if (!jsonMatch) {
         console.error('No JSON object found in response');
@@ -119,34 +129,43 @@ Do not add any text, formatting, or explanation outside the JSON.`;
       const jsonStr = jsonMatch[0];
       console.log('Extracted JSON:', jsonStr);
       
-      const parsedResult = JSON.parse(jsonStr);
-      
-      if (parsedResult.isRecipe === false) {
-        // This is a non-recipe response
+      try {
+        const parsedResult = JSON.parse(jsonStr);
+        
+        if (parsedResult.isRecipe === false) {
+          // This is a non-recipe response
+          return {
+            name: parsedResult.name || "Response",
+            ingredients: [],
+            instructions: [],
+            isRecipe: false,
+            isRTL: parsedResult.isRTL || language === 'he',
+            content: parsedResult.content || "I can only help with recipes and food-related questions."
+          };
+        }
+        
+        // Validate required fields for recipes
+        if (!parsedResult.name || !Array.isArray(parsedResult.ingredients) || !Array.isArray(parsedResult.instructions)) {
+          throw new Error('Invalid recipe format');
+        }
+        
         return {
-          name: parsedResult.name || "Response",
-          ingredients: [],
-          instructions: [],
-          isRecipe: false,
-          isRTL: parsedResult.isRTL || false,
-          content: parsedResult.content || "I can only help with recipes and food-related questions."
+          name: parsedResult.name,
+          ingredients: parsedResult.ingredients,
+          instructions: parsedResult.instructions,
+          isRecipe: true,
+          isRTL: parsedResult.isRTL || language === 'he',
+          ingredientsLabel: parsedResult.ingredientsLabel || (language === 'he' ? 'מצרכים' : 'Ingredients'),
+          instructionsLabel: parsedResult.instructionsLabel || (language === 'he' ? 'אופן ההכנה' : 'Instructions'),
+          tags: parsedResult.tags || [],
+          difficulty: parsedResult.difficulty || 'medium',
+          estimatedTime: parsedResult.estimatedTime || '',
+          calories: parsedResult.calories || ''
         };
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        throw new Error('Failed to parse JSON from response');
       }
-      
-      // Validate required fields for recipes
-      if (!parsedResult.name || !Array.isArray(parsedResult.ingredients) || !Array.isArray(parsedResult.instructions)) {
-        throw new Error('Invalid recipe format');
-      }
-      
-      return {
-        name: parsedResult.name,
-        ingredients: parsedResult.ingredients,
-        instructions: parsedResult.instructions,
-        isRecipe: true,
-        isRTL: parsedResult.isRTL || false,
-        ingredientsLabel: parsedResult.ingredientsLabel || (language === 'he' ? 'מצרכים' : 'Ingredients'),
-        instructionsLabel: parsedResult.instructionsLabel || (language === 'he' ? 'אופן ההכנה' : 'Instructions')
-      };
     } catch (error) {
       console.error('Error parsing recipe response:', error);
       throw new Error('Failed to parse recipe response');
@@ -165,6 +184,10 @@ Edit request: "${editRequest}"
 Please modify the recipe according to the edit request.
 ${isHebrew ? "Please respond in Hebrew, following RTL (right-to-left) text direction." : "Please respond in English."}
 
+Please analyze the ingredients and automatically generate appropriate tags (like "vegan", "gluten-free", "spicy", etc.) based on what you see in the recipe.
+Also, estimate the difficulty level (easy, medium, hard) and approximate cooking time.
+If possible, provide a rough calorie estimate per serving.
+
 Respond ONLY with a valid JSON object that has the following structure:
 {
   "name": "Recipe Name",
@@ -173,12 +196,17 @@ Respond ONLY with a valid JSON object that has the following structure:
   "isRecipe": true,
   ${isHebrew ? '"isRTL": true,' : '"isRTL": false,'}
   ${isHebrew ? '"ingredientsLabel": "מצרכים",' : '"ingredientsLabel": "Ingredients",'}
-  ${isHebrew ? '"instructionsLabel": "אופן ההכנה"' : '"instructionsLabel": "Instructions"'}
+  ${isHebrew ? '"instructionsLabel": "אופן ההכנה",' : '"instructionsLabel": "Instructions",'}
+  "tags": ["tag1", "tag2"],
+  "difficulty": "easy|medium|hard",
+  "estimatedTime": "30 min",
+  "calories": "300 calories per serving"
 }
 
 The recipe should be detailed and professional.
 Do not include any text before or after the JSON object.
 Do not include markdown formatting or code blocks.
+The JSON must be valid and parseable.
 `;
       
       const response = await fetch(

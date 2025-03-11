@@ -22,8 +22,8 @@ const Chat: React.FC = () => {
         description: `"${recipe.name}" has been added to your collection.`,
       });
       
-      // Navigate to the recipes page
-      navigate('/recipes');
+      // Navigate to the specific recipe in the recipes page
+      navigate(`/recipes?id=${newRecipe.id}`);
       
     } catch (error) {
       console.error('Error saving recipe:', error);
