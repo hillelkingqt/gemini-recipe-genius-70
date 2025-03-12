@@ -5,17 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  CookingPot,
-  Mail,
-  Lock,
-  User,
-  ArrowRight,
-  Loader2,
-  CheckCircle2,
-  Eye,
-  EyeOff,
-} from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
+import { Moon, Sun, CookingPot, Mail, Lock, User, ArrowRight, Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 
@@ -24,24 +15,22 @@ const Auth: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { isDarkMode, toggleDarkMode } = useTheme();
 
-  // איזה טאב פעיל
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(
     location.state?.mode === 'signup' ? 'signup' : 'signin'
   );
 
-  // טופס התחברות
+  // Sign In Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  // בוליאני שמחליט אם להציג או להסתיר את הסיסמה ב־Sign In
   const [showSignInPassword, setShowSignInPassword] = useState(false);
 
-  // טופס הרשמה
+  // Sign Up Form State
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
-  // בוליאניים נפרדים לכל שדה סיסמה בהרשמה
   const [showSignUpPassword, setShowSignUpPassword] = useState(false);
   const [showSignUpConfirmPassword, setShowSignUpConfirmPassword] = useState(false);
 
@@ -55,8 +44,9 @@ const Auth: React.FC = () => {
   }, [user, isLoading, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
-    localStorage.clear();
     e.preventDefault();
+    // נקה localStorage כדי למחוק צ'אט קודם
+    localStorage.clear();
     if (!email || !password) {
       toast({
         title: 'Error',
@@ -77,7 +67,6 @@ const Auth: React.FC = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!newEmail || !newPassword || !confirmPassword || !username) {
       toast({
         title: 'Error',
@@ -86,7 +75,6 @@ const Auth: React.FC = () => {
       });
       return;
     }
-
     if (newPassword !== confirmPassword) {
       toast({
         title: 'Error',
@@ -95,7 +83,6 @@ const Auth: React.FC = () => {
       });
       return;
     }
-
     if (newPassword.length < 6) {
       toast({
         title: 'Error',
@@ -104,23 +91,19 @@ const Auth: React.FC = () => {
       });
       return;
     }
-
     setIsSubmitting(true);
     try {
       await signUp(newEmail, newPassword, username);
       setShowSuccessMessage(true);
-
       // העתקת הערכים לטופס ההתחברות
       setEmail(newEmail);
       setPassword(newPassword);
-
       // איפוס טופס ההרשמה
       setNewEmail('');
       setNewPassword('');
       setConfirmPassword('');
       setUsername('');
-
-      // אחרי 5 שניות, מסתירים את ההודעה ומעבירים לטאב התחברות
+      // אחרי 5 שניות, מסתירים את הודעת ההצלחה ומעבירים לטאב ההתחברות
       setTimeout(() => {
         setShowSuccessMessage(false);
         setActiveTab('signin');
@@ -141,14 +124,25 @@ const Auth: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4">
+    // ודא שה-container הראשי הוא relative כדי שהכפתור הממוקם absolute יעבוד כהלכה
+    <div className="min-h-screen relative flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4">
+      {/* Dark Mode Toggle */}
+      <div className="absolute top-4 right-4">
+        <button
+          onClick={toggleDarkMode}
+          className="p-2 rounded-full border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          aria-label="Toggle Dark Mode"
+        >
+          {isDarkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-gray-800" />}
+        </button>
+      </div>
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5 }}
         className="max-w-md w-full mx-auto"
       >
-        {/* לוגו וכותרת */}
+        {/* Logo and Title */}
         <div className="text-center mb-8">
           <motion.div
             className="flex justify-center"
@@ -175,7 +169,6 @@ const Auth: React.FC = () => {
             Your personal recipe assistant
           </motion.p>
         </div>
-
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -201,7 +194,6 @@ const Auth: React.FC = () => {
                 Create Account
               </TabsTrigger>
             </TabsList>
-
             <div className="p-6">
               <AnimatePresence mode="wait">
                 {showSuccessMessage ? (
@@ -217,8 +209,7 @@ const Auth: React.FC = () => {
                       Account Created!
                     </h3>
                     <p className="text-green-600 dark:text-green-400">
-                      Your account has been created. Please check your email to confirm your
-                      registration.
+                      Your account has been created. Please check your email to confirm your registration.
                     </p>
                     <p className="text-sm text-green-500 dark:text-green-500">
                       Redirecting to sign in...
@@ -226,7 +217,7 @@ const Auth: React.FC = () => {
                   </motion.div>
                 ) : (
                   <>
-                    {/* טאב ההתחברות */}
+                    {/* Sign In Tab */}
                     <TabsContent value="signin" className="mt-0">
                       <motion.form
                         initial={{ x: -20, opacity: 0 }}
@@ -236,57 +227,51 @@ const Auth: React.FC = () => {
                         onSubmit={handleSignIn}
                       >
                         <div className="space-y-4">
-                          {/* אימייל התחברות */}
-{/* Email Field */}
-<div className="space-y-2">
-  <Label htmlFor="email" className="flex items-center text-gray-700 dark:text-gray-300">
-    <Mail className="w-4 h-4 mr-2" />
-    Email
-  </Label>
-  <Input
-    id="email"
-    type="email"
-    placeholder="your@email.com"
-    autoComplete="email"
-    value={email}
-    onChange={(e) => setEmail(e.target.value)}
-    className="w-full h-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
-  />
-</div>
-
-{/* Password Field */}
-<div className="space-y-2">
-  <Label htmlFor="password" className="flex items-center text-gray-700 dark:text-gray-300">
-    <Lock className="w-4 h-4 mr-2" />
-    Password
-  </Label>
-  <div className="relative">
-    <Input
-      id="password"
-      type={showSignInPassword ? "text" : "password"}
-      placeholder="••••••••"
-      autoComplete="current-password"
-      value={password}
-      onChange={(e) => setPassword(e.target.value)}
-      className="w-full h-10 pr-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
-    />
-    <button
-      type="button"
-      onClick={() => setShowSignInPassword((prev) => !prev)}
-      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none"
-    >
-      {showSignInPassword ? (
-        <EyeOff className="w-5 h-5" />
-      ) : (
-        <Eye className="w-5 h-5" />
-      )}
-    </button>
-  </div>
-</div>
-
-
-
-
+                          {/* Email Field */}
+                          <div className="space-y-2">
+                            <Label htmlFor="email" className="flex items-center text-gray-700 dark:text-gray-300">
+                              <Mail className="w-4 h-4 mr-2" />
+                              Email
+                            </Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              placeholder="your@email.com"
+                              autoComplete="email"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              className="w-full h-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
+                            />
+                          </div>
+                          {/* Password Field */}
+                          <div className="space-y-2">
+                            <Label htmlFor="password" className="flex items-center text-gray-700 dark:text-gray-300">
+                              <Lock className="w-4 h-4 mr-2" />
+                              Password
+                            </Label>
+                            <div className="relative">
+                              <Input
+                                id="password"
+                                type={showSignInPassword ? "text" : "password"}
+                                placeholder="••••••••"
+                                autoComplete="current-password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full h-10 pr-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowSignInPassword((prev) => !prev)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none"
+                              >
+                                {showSignInPassword ? (
+                                  <EyeOff className="w-5 h-5" />
+                                ) : (
+                                  <Eye className="w-5 h-5" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
                           <Button
                             type="submit"
                             className="w-full bg-recipe-green hover:bg-recipe-green/90 text-white"
@@ -302,8 +287,7 @@ const Auth: React.FC = () => {
                         </div>
                       </motion.form>
                     </TabsContent>
-
-                    {/* טאב יצירת חשבון */}
+                    {/* Create Account Tab */}
                     <TabsContent value="signup" className="mt-0">
                       <motion.form
                         initial={{ x: 20, opacity: 0 }}
@@ -313,12 +297,9 @@ const Auth: React.FC = () => {
                         onSubmit={handleSignUp}
                       >
                         <div className="space-y-4">
-                          {/* שם משתמש */}
+                          {/* Username Field */}
                           <div className="space-y-2">
-                            <Label
-                              htmlFor="username"
-                              className="flex items-center text-gray-700 dark:text-gray-300"
-                            >
+                            <Label htmlFor="username" className="flex items-center text-gray-700 dark:text-gray-300">
                               <User className="w-4 h-4 mr-2" />
                               Username
                             </Label>
@@ -330,13 +311,9 @@ const Auth: React.FC = () => {
                               className="w-full border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
                             />
                           </div>
-
-                          {/* אימייל */}
+                          {/* Email Field */}
                           <div className="space-y-2">
-                            <Label
-                              htmlFor="new-email"
-                              className="flex items-center text-gray-700 dark:text-gray-300"
-                            >
+                            <Label htmlFor="new-email" className="flex items-center text-gray-700 dark:text-gray-300">
                               <Mail className="w-4 h-4 mr-2" />
                               Email
                             </Label>
@@ -350,75 +327,64 @@ const Auth: React.FC = () => {
                               className="w-full border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
                             />
                           </div>
-
-                          {/* סיסמה ראשית */}
-<div className="space-y-2">
-  <Label
-    htmlFor="new-password"
-    className="flex items-center text-gray-700 dark:text-gray-300"
-  >
-    <Lock className="w-4 h-4 mr-2" />
-    Password
-  </Label>
-  <div className="relative">
-    <Input
-      id="new-password"
-      type={showSignUpPassword ? 'text' : 'password'}
-      placeholder="••••••••"
-      autoComplete="new-password"
-      value={newPassword}
-      onChange={(e) => setNewPassword(e.target.value)}
-      className="w-full h-10 pr-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
-    />
-    <button
-      type="button"
-      onClick={() => setShowSignUpPassword((prev) => !prev)}
-      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none"
-    >
-      {showSignUpPassword ? (
-        <EyeOff className="w-5 h-5" />
-      ) : (
-        <Eye className="w-5 h-5" />
-      )}
-    </button>
-  </div>
-</div>
-
-
-                          {/* סיסמה לאישור */}
-<div className="space-y-2">
-  <Label
-    htmlFor="confirm-password"
-    className="flex items-center text-gray-700 dark:text-gray-300"
-  >
-    <Lock className="w-4 h-4 mr-2" />
-    Confirm Password
-  </Label>
-  <div className="relative">
-    <Input
-      id="confirm-password"
-      type={showSignUpConfirmPassword ? 'text' : 'password'}
-      placeholder="••••••••"
-      autoComplete="new-password"
-      value={confirmPassword}
-      onChange={(e) => setConfirmPassword(e.target.value)}
-      className="w-full h-10 pr-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
-    />
-    <button
-      type="button"
-      onClick={() => setShowSignUpConfirmPassword((prev) => !prev)}
-      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none"
-    >
-      {showSignUpConfirmPassword ? (
-        <EyeOff className="w-5 h-5" />
-      ) : (
-        <Eye className="w-5 h-5" />
-      )}
-    </button>
-  </div>
-</div>
-
-
+                          {/* Password Field */}
+                          <div className="space-y-2">
+                            <Label htmlFor="new-password" className="flex items-center text-gray-700 dark:text-gray-300">
+                              <Lock className="w-4 h-4 mr-2" />
+                              Password
+                            </Label>
+                            <div className="relative">
+                              <Input
+                                id="new-password"
+                                type={showSignUpPassword ? 'text' : 'password'}
+                                placeholder="••••••••"
+                                autoComplete="new-password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                className="w-full h-10 pr-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowSignUpPassword((prev) => !prev)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none"
+                              >
+                                {showSignUpPassword ? (
+                                  <EyeOff className="w-5 h-5" />
+                                ) : (
+                                  <Eye className="w-5 h-5" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                          {/* Confirm Password Field */}
+                          <div className="space-y-2">
+                            <Label htmlFor="confirm-password" className="flex items-center text-gray-700 dark:text-gray-300">
+                              <Lock className="w-4 h-4 mr-2" />
+                              Confirm Password
+                            </Label>
+                            <div className="relative">
+                              <Input
+                                id="confirm-password"
+                                type={showSignUpConfirmPassword ? 'text' : 'password'}
+                                placeholder="••••••••"
+                                autoComplete="new-password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className="w-full h-10 pr-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowSignUpConfirmPassword((prev) => !prev)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none"
+                              >
+                                {showSignUpConfirmPassword ? (
+                                  <EyeOff className="w-5 h-5" />
+                                ) : (
+                                  <Eye className="w-5 h-5" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
                           <Button
                             type="submit"
                             className="w-full bg-recipe-green hover:bg-recipe-green/90 text-white"
