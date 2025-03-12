@@ -14,21 +14,22 @@ const Auth: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  
+
+  // אם המצב שבדרך למצב הרשמה נשלח, נפתח את הטאב המתאים
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(
     location.state?.mode === 'signup' ? 'signup' : 'signin'
   );
-  
-  // Sign In Form State
+
+  // מצב טופס התחברות
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
-  // Sign Up Form State
+
+  // מצב טופס הרשמה
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
@@ -40,7 +41,6 @@ const Auth: React.FC = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!email || !password) {
       toast({
         title: "Error",
@@ -49,7 +49,6 @@ const Auth: React.FC = () => {
       });
       return;
     }
-    
     setIsSubmitting(true);
     try {
       await signIn(email, password);
@@ -62,7 +61,6 @@ const Auth: React.FC = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!newEmail || !newPassword || !confirmPassword || !username) {
       toast({
         title: "Error",
@@ -71,7 +69,6 @@ const Auth: React.FC = () => {
       });
       return;
     }
-    
     if (newPassword !== confirmPassword) {
       toast({
         title: "Error",
@@ -80,7 +77,6 @@ const Auth: React.FC = () => {
       });
       return;
     }
-    
     if (newPassword.length < 6) {
       toast({
         title: "Error",
@@ -89,7 +85,6 @@ const Auth: React.FC = () => {
       });
       return;
     }
-    
     setIsSubmitting(true);
     try {
       await signUp(newEmail, newPassword, username);
@@ -97,14 +92,12 @@ const Auth: React.FC = () => {
       // העתקת הערכים לתיבות ההתחברות
       setEmail(newEmail);
       setPassword(newPassword);
-      
-      // אפס את שדות ההרשמה
+      // איפוס שדות ההרשמה
       setNewEmail('');
       setNewPassword('');
       setConfirmPassword('');
       setUsername('');
-      
-      // לאחר 5 שניות, הסתר את הודעת ההצלחה והעביר לטאב Sign In
+      // המתנה של 5 שניות ואז מעבר לטאב ההתחברות
       setTimeout(() => {
         setShowSuccessMessage(false);
         setActiveTab('signin');
