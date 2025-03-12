@@ -1,3 +1,4 @@
+
 import { RecipeRequest, RecipeResponse } from "../types/Recipe";
 
 const GOOGLE_API_KEY = "AIzaSyA2KjqBCn4oT8s5s6WUB1VOVfVO_eI4rXA";
@@ -74,10 +75,11 @@ Please provide:
 - Difficulty level (easy, medium, hard)
 - Preparation time breakdown
 - Calorie estimate per serving
-- Time markers for steps that need timers (e.g., "bake for 30 minutes")
+- Time markers for steps that need timers (e.g., "bake for 30 minutes" or "let dough rise for 2 hours")
 - Nutrition information if possible
 - Cuisine type
 - Seasonal recommendations if applicable
+- Servings information
 
 Respond ONLY with a complete, valid JSON object using this exact structure, nothing else:
 {
@@ -112,6 +114,11 @@ Respond ONLY with a complete, valid JSON object using this exact structure, noth
   "seasonality": ["Spring", "Summer"],
   "cuisine": "Mediterranean"
 }
+
+For the "timeMarkers" field, identify any steps that require waiting or timed cooking (like "bake for 20 minutes" or "let rise for 1 hour"). Extract these times and create timeMarker objects with:
+- step: the step number in the instructions array (starting from 0)
+- duration: the time in minutes
+- description: a short description of what's happening during this time
 
 If the user is NOT asking for a recipe or food-related content, respond with:
 {
@@ -158,6 +165,12 @@ The JSON must be valid and parseable.`;
       try {
         const parsedResult = JSON.parse(jsonStr);
         
+        // Detect Hebrew content automatically for better RTL handling
+        const containsHebrew = (text: string) => /[\u0590-\u05FF]/.test(text);
+        const isHebrewRecipe = containsHebrew(parsedResult.name) || 
+                               (parsedResult.ingredients?.some((ing: string) => containsHebrew(ing))) ||
+                               (parsedResult.instructions?.some((inst: string) => containsHebrew(inst)));
+        
         if (parsedResult.isRecipe === false) {
           // This is a non-recipe response
           return {
@@ -165,7 +178,7 @@ The JSON must be valid and parseable.`;
             ingredients: [],
             instructions: [],
             isRecipe: false,
-            isRTL: parsedResult.isRTL || language === 'he',
+            isRTL: parsedResult.isRTL || language === 'he' || isHebrewRecipe,
             content: parsedResult.content || "I can only help with recipes and food-related questions."
           };
         }
@@ -175,18 +188,35 @@ The JSON must be valid and parseable.`;
           throw new Error('Invalid recipe format');
         }
         
+        // Get proper RTL setting based on content language
+        const isRTL = parsedResult.isRTL !== undefined 
+          ? parsedResult.isRTL 
+          : language === 'he' || isHebrewRecipe;
+        
+        // Choose appropriate labels based on RTL
+        const ingredientsLabel = parsedResult.ingredientsLabel || (isRTL ? 'מצרכים' : 'Ingredients');
+        const instructionsLabel = parsedResult.instructionsLabel || (isRTL ? 'אופן ההכנה' : 'Instructions');
+        
         return {
           name: parsedResult.name,
           ingredients: parsedResult.ingredients,
           instructions: parsedResult.instructions,
           isRecipe: true,
-          isRTL: parsedResult.isRTL || language === 'he',
-          ingredientsLabel: parsedResult.ingredientsLabel || (language === 'he' ? 'מצרכים' : 'Ingredients'),
-          instructionsLabel: parsedResult.instructionsLabel || (language === 'he' ? 'אופן ההכנה' : 'Instructions'),
+          isRTL,
+          ingredientsLabel,
+          instructionsLabel,
           tags: parsedResult.tags || [],
           difficulty: parsedResult.difficulty || 'medium',
           estimatedTime: parsedResult.estimatedTime || '',
-          calories: parsedResult.calories || ''
+          calories: parsedResult.calories || '',
+          timeMarkers: parsedResult.timeMarkers || [],
+          prepTime: parsedResult.prepTime || '',
+          cookTime: parsedResult.cookTime || '',
+          totalTime: parsedResult.totalTime || '',
+          servings: parsedResult.servings || 4,
+          nutritionInfo: parsedResult.nutritionInfo || {},
+          seasonality: parsedResult.seasonality || [],
+          cuisine: parsedResult.cuisine || ''
         };
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
@@ -217,10 +247,15 @@ Please provide:
 - Difficulty level (easy, medium, hard)
 - Preparation time breakdown
 - Calorie estimate per serving
-- Time markers for steps that need timers (e.g., "bake for 30 minutes")
+- Time markers for steps that need timers (e.g., "bake for 30 minutes" or "let dough rise for 2 hours")
 - Nutrition information if possible
 - Cuisine type
 - Seasonal recommendations if applicable
+
+For the "timeMarkers" field, identify any steps that require waiting or timed cooking (like "bake for 20 minutes" or "let rise for 1 hour"). Extract these times and create timeMarker objects with:
+- step: the step number in the instructions array (starting from 0)
+- duration: the time in minutes
+- description: a short description of what's happening during this time
 
 Respond ONLY with a valid JSON object that has the following structure:
 {

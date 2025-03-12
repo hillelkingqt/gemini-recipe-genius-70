@@ -15,7 +15,9 @@ const Chat: React.FC = () => {
 
   const handleRecipeGenerated = (recipe: RecipeResponse) => {
     try {
-      const newRecipe = addRecipe(recipe);
+      // Accept or save as draft based on recipe quality
+      const status = recipe.isRecipe ? 'accepted' : 'draft';
+      const newRecipe = addRecipe(recipe, status);
       
       toast({
         title: "Recipe Saved!",
@@ -33,6 +35,22 @@ const Chat: React.FC = () => {
         title: "Save Failed",
         description: "There was an error saving your recipe.",
       });
+    }
+  };
+
+  const handleRecipeRejected = (recipe: RecipeResponse) => {
+    try {
+      // Save rejected recipe with rejected status
+      const newRecipe = addRecipe(recipe, 'rejected');
+      
+      toast({
+        variant: "default",
+        title: "Recipe Saved as Rejected",
+        description: "The recipe was saved in your rejected recipes collection.",
+      });
+      
+    } catch (error) {
+      console.error('Error saving rejected recipe:', error);
     }
   };
 
@@ -54,7 +72,10 @@ const Chat: React.FC = () => {
       </motion.div>
       
       <div className="flex-1 overflow-hidden">
-        <ChatInterface onRecipeGenerated={handleRecipeGenerated} />
+        <ChatInterface 
+          onRecipeGenerated={handleRecipeGenerated}
+          onRecipeRejected={handleRecipeRejected}
+        />
       </div>
     </div>
   );

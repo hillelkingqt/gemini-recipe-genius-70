@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Recipe, RecipeResponse } from '@/types/Recipe';
 
@@ -11,7 +12,7 @@ export function useRecipes() {
       try {
         const parsedRecipes = JSON.parse(savedRecipes);
         // Convert string dates back to Date objects
-        const recipesWithDates = parsedRecipes.map((recipe: any) => ({
+        const recipesWithDates = parsedRecipes.map((recipe: Recipe) => ({
           ...recipe,
           createdAt: new Date(recipe.createdAt)
         }));
@@ -58,36 +59,43 @@ export function useRecipes() {
       cuisine: recipeResponse.cuisine
     };
     
-    setRecipes(prevRecipes => [newRecipe, ...prevRecipes]);
+    const updatedRecipes = [newRecipe, ...recipes];
+    setRecipes(updatedRecipes);
+    
+    // Immediately save to localStorage to ensure it persists
+    localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
+    
     return newRecipe;
   };
   
   const toggleFavorite = (id: string) => {
-    setRecipes(prevRecipes => 
-      prevRecipes.map(recipe => 
-        recipe.id === id ? { ...recipe, isFavorite: !recipe.isFavorite } : recipe
-      )
+    const updatedRecipes = recipes.map(recipe => 
+      recipe.id === id ? { ...recipe, isFavorite: !recipe.isFavorite } : recipe
     );
+    setRecipes(updatedRecipes);
+    localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
   };
   
   const rateRecipe = (id: string, rating: number) => {
-    setRecipes(prevRecipes => 
-      prevRecipes.map(recipe => 
-        recipe.id === id ? { ...recipe, rating } : recipe
-      )
+    const updatedRecipes = recipes.map(recipe => 
+      recipe.id === id ? { ...recipe, rating } : recipe
     );
+    setRecipes(updatedRecipes);
+    localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
   };
   
   const addNote = (id: string, note: string) => {
-    setRecipes(prevRecipes => 
-      prevRecipes.map(recipe => 
-        recipe.id === id ? { ...recipe, notes: note } : recipe
-      )
+    const updatedRecipes = recipes.map(recipe => 
+      recipe.id === id ? { ...recipe, notes: note } : recipe
     );
+    setRecipes(updatedRecipes);
+    localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
   };
   
   const removeRecipe = (id: string) => {
-    setRecipes(prevRecipes => prevRecipes.filter(recipe => recipe.id !== id));
+    const updatedRecipes = recipes.filter(recipe => recipe.id !== id);
+    setRecipes(updatedRecipes);
+    localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
   };
   
   const getRecipe = (id: string) => {
@@ -95,27 +103,27 @@ export function useRecipes() {
   };
   
   const updateRecipe = (id: string, updatedRecipe: Partial<Recipe>) => {
-    setRecipes(prevRecipes => 
-      prevRecipes.map(recipe => 
-        recipe.id === id ? { ...recipe, ...updatedRecipe } : recipe
-      )
+    const updatedRecipes = recipes.map(recipe => 
+      recipe.id === id ? { ...recipe, ...updatedRecipe } : recipe
     );
+    setRecipes(updatedRecipes);
+    localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
   };
   
   const updateRecipeStatus = (id: string, status: 'draft' | 'accepted' | 'rejected') => {
-    setRecipes(prevRecipes => 
-      prevRecipes.map(recipe => 
-        recipe.id === id ? { ...recipe, status } : recipe
-      )
+    const updatedRecipes = recipes.map(recipe => 
+      recipe.id === id ? { ...recipe, status } : recipe
     );
+    setRecipes(updatedRecipes);
+    localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
   };
   
   const updateServings = (id: string, servings: number) => {
-    setRecipes(prevRecipes => 
-      prevRecipes.map(recipe => 
-        recipe.id === id ? { ...recipe, servings } : recipe
-      )
+    const updatedRecipes = recipes.map(recipe => 
+      recipe.id === id ? { ...recipe, servings } : recipe
     );
+    setRecipes(updatedRecipes);
+    localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
   };
 
   return {

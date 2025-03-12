@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Send, Check, X, Edit, AlertCircle } from 'lucide-react';
+import { Loader2, Send, Check, X, Edit, AlertCircle, Save } from 'lucide-react';
 import { geminiService } from '@/services/GeminiService';
 import { RecipeResponse } from '@/types/Recipe';
 import { useToast } from '@/components/ui/use-toast';
@@ -18,9 +18,10 @@ interface Message {
 
 interface ChatInterfaceProps {
   onRecipeGenerated: (recipe: RecipeResponse) => void;
+  onRecipeRejected: (recipe: RecipeResponse) => void;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated, onRecipeRejected }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -46,16 +47,52 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
     }
   }, [isEditing]);
   
-  // Initial greeting message
+  // Load saved messages from localStorage if they exist
   useEffect(() => {
-    setMessages([
-      {
-        id: '1',
-        text: "Hello! I'm your Recipe Assistant. Tell me what kind of recipe you're looking for, and I'll create it for you. For example, try: 'I want a simple pasta recipe with mushrooms and garlic'.",
-        sender: 'ai'
+    const savedMessages = localStorage.getItem('chatMessages');
+    const savedRecipe = localStorage.getItem('currentRecipe');
+    
+    if (savedMessages) {
+      try {
+        setMessages(JSON.parse(savedMessages));
+      } catch (e) {
+        console.error('Error loading saved messages:', e);
       }
-    ]);
+    } else {
+      // Initial greeting message if no saved messages
+      setMessages([
+        {
+          id: '1',
+          text: "Hello! I'm your Recipe Assistant. Tell me what kind of recipe you're looking for, and I'll create it for you. For example, try: 'I want a simple pasta recipe with mushrooms and garlic'.",
+          sender: 'ai'
+        }
+      ]);
+    }
+    
+    if (savedRecipe) {
+      try {
+        setGeneratedRecipe(JSON.parse(savedRecipe));
+      } catch (e) {
+        console.error('Error loading saved recipe:', e);
+      }
+    }
   }, []);
+  
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('chatMessages', JSON.stringify(messages));
+    }
+  }, [messages]);
+  
+  // Save current recipe to localStorage whenever it changes
+  useEffect(() => {
+    if (generatedRecipe) {
+      localStorage.setItem('currentRecipe', JSON.stringify(generatedRecipe));
+    } else {
+      localStorage.removeItem('currentRecipe');
+    }
+  }, [generatedRecipe]);
   
   const handleSendMessage = async () => {
     if (!input.trim()) return;
@@ -174,6 +211,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
     if (generatedRecipe) {
       onRecipeGenerated(generatedRecipe);
       setGeneratedRecipe(null);
+      localStorage.removeItem('currentRecipe');
       
       // Add confirmation message
       const confirmationMessage: Message = {
@@ -185,16 +223,38 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
     }
   };
   
+  const handleSaveAsDraft = () => {
+    if (generatedRecipe) {
+      // We'll use the same handler but update the UI message
+      onRecipeGenerated(generatedRecipe);
+      setGeneratedRecipe(null);
+      localStorage.removeItem('currentRecipe');
+      
+      // Add draft confirmation message
+      const confirmationMessage: Message = {
+        id: Date.now().toString(),
+        text: "I've saved this recipe as a draft. You can find it in your recipes collection.",
+        sender: 'ai'
+      };
+      setMessages(prev => [...prev, confirmationMessage]);
+    }
+  };
+  
   const handleRejectRecipe = () => {
-    setGeneratedRecipe(null);
-    
-    // Add message
-    const message: Message = {
-      id: Date.now().toString(),
-      text: "No problem. Let's try something else! What kind of recipe would you like instead?",
-      sender: 'ai'
-    };
-    setMessages(prev => [...prev, message]);
+    if (generatedRecipe) {
+      // Save the rejected recipe
+      onRecipeRejected(generatedRecipe);
+      setGeneratedRecipe(null);
+      localStorage.removeItem('currentRecipe');
+      
+      // Add message
+      const message: Message = {
+        id: Date.now().toString(),
+        text: "No problem. I've saved the recipe to your rejected recipes collection. Let's try something else! What kind of recipe would you like instead?",
+        sender: 'ai'
+      };
+      setMessages(prev => [...prev, message]);
+    }
   };
   
   // Helper function to detect language (very simple implementation)
@@ -204,7 +264,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
   };
   
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-gray-50">
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <AnimatePresence>
           <motion.div 
@@ -222,7 +282,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
                 transition={{ duration: 0.3 }}
               >
                 <div 
-                  className={`message-bubble ${message.sender === 'user' ? 'bg-recipe-green/10 text-black' : 'bg-gray-100 text-black'} ${message.isRTL ? 'rtl text-right' : 'ltr text-left'}`}
+                  className={`message-bubble ${message.sender === 'user' ? 'bg-recipe-green/10 text-black' : 'bg-white text-black'} ${message.isRTL ? 'rtl text-right' : 'ltr text-left'}`}
                   style={{ 
                     maxWidth: '80%', 
                     borderRadius: '18px', 
@@ -260,6 +320,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
                 >
                   <Check className="h-4 w-4 mr-2" />
                   {generatedRecipe.isRTL ? 'אישור המתכון' : 'Accept Recipe'}
+                </Button>
+                <Button
+                  onClick={handleSaveAsDraft}
+                  variant="outline"
+                  className="flex-1 border-recipe-orange text-recipe-orange min-w-[120px]"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {generatedRecipe.isRTL ? 'שמור כטיוטה' : 'Save as Draft'}
                 </Button>
                 <Button 
                   onClick={() => setIsEditing(true)}
@@ -342,7 +410,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
             placeholder="Describe a recipe you'd like me to create..."
             onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
             disabled={isLoading}
-            className="bg-white border-gray-300"
+            className="bg-white border-gray-300 focus:border-recipe-green focus:ring-recipe-green/30"
             dir={detectLanguage(input) === 'he' ? 'rtl' : 'ltr'}
           />
           <Button 
