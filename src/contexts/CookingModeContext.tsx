@@ -1,6 +1,5 @@
 
 import React, { createContext, useContext, useState } from 'react';
-import { Step } from '@/types/Recipe';
 
 interface CookingModeContextType {
   isActive: boolean;
@@ -62,3 +61,4 @@ export const useCookingMode = () => {
   }
   return context;
 };
+
