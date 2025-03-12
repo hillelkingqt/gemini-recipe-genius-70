@@ -1,46 +1,16 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { CookingPot, MessageSquare, Moon, Sun, Menu, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { motion } from 'framer-motion';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export const Navigation = () => {
   const location = useLocation();
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrollPosition, setScrollPosition] = useState(0);
-  
-  // Check for dark mode preference on initial load
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-    setIsDarkMode(savedDarkMode);
-    
-    if (savedDarkMode) {
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('dark-mode');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.remove('dark-mode');
-    }
-  }, []);
-  
-  // Toggle dark mode
-  const toggleDarkMode = () => {
-    const newDarkMode = !isDarkMode;
-    setIsDarkMode(newDarkMode);
-    
-    if (newDarkMode) {
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('dark-mode');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.remove('dark-mode');
-    }
-    
-    localStorage.setItem('darkMode', newDarkMode.toString());
-  };
-  
+
   // Track scroll position for navbar effects
   useEffect(() => {
     const handleScroll = () => {
@@ -50,12 +20,12 @@ export const Navigation = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-  
+
   return (
     <motion.nav 
-      className={`sticky top-0 w-full bg-white/95 backdrop-blur-md dark:bg-gray-900/95 z-50 transition-all duration-300 ${
+      className={`sticky top-0 w-full backdrop-blur-md dark:bg-gray-900/95 z-50 transition-all duration-300 ${
         scrollPosition > 50 ? 'shadow-lg' : ''
-      }`}
+      } ${isDarkMode ? 'bg-gray-900/95' : 'bg-white/95'}`}
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}

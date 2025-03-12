@@ -1,96 +1,51 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 48 30% 96%;
-    --foreground: 20 14.3% 4.1%;
-
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
-    --card-foreground: 20 14.3% 4.1%;
-
+    --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 20 14.3% 4.1%;
-
+    --popover-foreground: 222.2 84% 4.9%;
     --primary: 142 72% 29%;
-    --primary-foreground: 355.7 100% 97.3%;
-
-    --secondary: 60 29% 97%;
-    --secondary-foreground: 24 9.8% 10%;
-
-    --muted: 60 44.2% 96.1%;
-    --muted-foreground: 25 5.3% 44.7%;
-
-    --accent: 142 70.6% 45.3%;
-    --accent-foreground: 24 9.8% 10%;
-
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 60 9.1% 97.8%;
-
-    --border: 20 5.9% 90%;
-    --input: 20 5.9% 90%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
     --ring: 142 72% 29%;
-
     --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-    
-    /* Recipe colors */
-    --recipe-green: 142 72% 29%;
-    --recipe-green-light: 142 70% 45%;
-    --recipe-green-dark: 142 72% 20%;
-    --recipe-orange: 33 100% 50%;
-    --recipe-orange-light: 35 100% 60%;
-    --recipe-orange-dark: 30 100% 45%;
-    --recipe-cream: 48 100% 95%;
   }
-
+ 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 60 9.1% 97.8%;
-
-    --card: 222 47% 11%;
-    --card-foreground: 60 9.1% 97.8%;
-
-    --popover: 222 47% 11%;
-    --popover-foreground: 60 9.1% 97.8%;
-
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
     --primary: 142 70.6% 45.3%;
-    --primary-foreground: 144.9 80.4% 10%;
-
-    --secondary: 217 32% 17%;
-    --secondary-foreground: 60 9.1% 97.8%;
-
-    --muted: 217 32% 17%;
-    --muted-foreground: 24 5.4% 63.9%;
-
-    --accent: 142 70.6% 45.3%;
-    --accent-foreground: 60 9.1% 97.8%;
-
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 60 9.1% 97.8%;
-
-    --border: 217 32% 17%;
-    --input: 217 32% 17%;
-    --ring: 142 70.6% 45.3%;
-    
-    /* Recipe colors for dark mode */
-    --recipe-green: 142 65% 40%;
-    --recipe-green-light: 142 60% 50%;
-    --recipe-green-dark: 142 70% 20%;
-    --recipe-orange: 33 90% 55%;
-    --recipe-orange-light: 35 90% 65%;
-    --recipe-orange-dark: 30 90% 45%;
-    --recipe-cream: 48 30% 15%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 142.1 70.6% 45.3%;
   }
 }
 
