@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CookingPot, Mail, Lock, User, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
+import { CookingPot, Mail, Lock, User, ArrowRight, Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 
@@ -14,22 +14,23 @@ const Auth: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-
-  // אם המצב שבדרך למצב הרשמה נשלח, נפתח את הטאב המתאים
+  
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(
     location.state?.mode === 'signup' ? 'signup' : 'signin'
   );
-
-  // מצב טופס התחברות
+  
+  // Sign In Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
-  // מצב טופס הרשמה
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
+  
+  // Sign Up Form State
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
-
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
@@ -41,6 +42,7 @@ const Auth: React.FC = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!email || !password) {
       toast({
         title: "Error",
@@ -49,6 +51,7 @@ const Auth: React.FC = () => {
       });
       return;
     }
+    
     setIsSubmitting(true);
     try {
       await signIn(email, password);
@@ -61,6 +64,7 @@ const Auth: React.FC = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!newEmail || !newPassword || !confirmPassword || !username) {
       toast({
         title: "Error",
@@ -69,6 +73,7 @@ const Auth: React.FC = () => {
       });
       return;
     }
+    
     if (newPassword !== confirmPassword) {
       toast({
         title: "Error",
@@ -77,6 +82,7 @@ const Auth: React.FC = () => {
       });
       return;
     }
+    
     if (newPassword.length < 6) {
       toast({
         title: "Error",
@@ -85,6 +91,7 @@ const Auth: React.FC = () => {
       });
       return;
     }
+    
     setIsSubmitting(true);
     try {
       await signUp(newEmail, newPassword, username);
@@ -92,12 +99,14 @@ const Auth: React.FC = () => {
       // העתקת הערכים לתיבות ההתחברות
       setEmail(newEmail);
       setPassword(newPassword);
+      
       // איפוס שדות ההרשמה
       setNewEmail('');
       setNewPassword('');
       setConfirmPassword('');
       setUsername('');
-      // המתנה של 5 שניות ואז מעבר לטאב ההתחברות
+      
+      // לאחר 5 שניות, הסתר את הודעת ההצלחה והעבר לטאב Sign In
       setTimeout(() => {
         setShowSuccessMessage(false);
         setActiveTab('signin');
@@ -224,20 +233,31 @@ const Auth: React.FC = () => {
                             />
                           </div>
                           
-                          <div className="space-y-2">
+                          <div className="relative space-y-2">
                             <Label htmlFor="password" className="flex items-center text-gray-700 dark:text-gray-300">
                               <Lock className="w-4 h-4 mr-2" />
                               Password
                             </Label>
                             <Input
                               id="password"
-                              type="password"
+                              type={showSignInPassword ? "text" : "password"}
                               placeholder="••••••••"
                               autoComplete="current-password"
                               value={password}
                               onChange={(e) => setPassword(e.target.value)}
-                              className="w-full border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
+                              className="w-full pr-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
                             />
+                            <button
+                              type="button"
+                              onClick={() => setShowSignInPassword((prev) => !prev)}
+                              className="absolute inset-y-0 right-0 flex items-center pr-3 focus:outline-none"
+                            >
+                              {showSignInPassword ? (
+                                <EyeOff className="w-5 h-5 text-gray-500" />
+                              ) : (
+                                <Eye className="w-5 h-5 text-gray-500" />
+                              )}
+                            </button>
                           </div>
                           
                           <Button 
@@ -295,35 +315,46 @@ const Auth: React.FC = () => {
                             />
                           </div>
                           
-                          <div className="space-y-2">
+                          <div className="relative space-y-2">
                             <Label htmlFor="new-password" className="flex items-center text-gray-700 dark:text-gray-300">
                               <Lock className="w-4 h-4 mr-2" />
                               Password
                             </Label>
                             <Input
                               id="new-password"
-                              type="password"
+                              type={showSignUpPassword ? "text" : "password"}
                               placeholder="••••••••"
                               autoComplete="new-password"
                               value={newPassword}
                               onChange={(e) => setNewPassword(e.target.value)}
-                              className="w-full border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
+                              className="w-full pr-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
                             />
+                            <button
+                              type="button"
+                              onClick={() => setShowSignUpPassword((prev) => !prev)}
+                              className="absolute inset-y-0 right-0 flex items-center pr-3 focus:outline-none"
+                            >
+                              {showSignUpPassword ? (
+                                <EyeOff className="w-5 h-5 text-gray-500" />
+                              ) : (
+                                <Eye className="w-5 h-5 text-gray-500" />
+                              )}
+                            </button>
                           </div>
                           
-                          <div className="space-y-2">
+                          <div className="relative space-y-2">
                             <Label htmlFor="confirm-password" className="flex items-center text-gray-700 dark:text-gray-300">
                               <Lock className="w-4 h-4 mr-2" />
                               Confirm Password
                             </Label>
                             <Input
                               id="confirm-password"
-                              type="password"
+                              type={showSignUpPassword ? "text" : "password"}
                               placeholder="••••••••"
                               autoComplete="new-password"
                               value={confirmPassword}
                               onChange={(e) => setConfirmPassword(e.target.value)}
-                              className="w-full border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
+                              className="w-full pr-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
                             />
                           </div>
                           
