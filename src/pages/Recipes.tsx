@@ -126,6 +126,7 @@ const Recipes: React.FC = () => {
                 onToggleFavorite={toggleFavorite}
                 onRate={rateRecipe}
                 onUpdateNotes={addNote}
+                onCloseDetail={() => setSelectedRecipeId(null)}
               />
             </motion.div>
           ) : (

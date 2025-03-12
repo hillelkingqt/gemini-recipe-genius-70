@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Recipe } from '@/types/Recipe';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Printer, Download, Heart, Star, Clock, Tag, FileText, ShoppingBag, Edit, Save, AlarmClock, PlayCircle } from 'lucide-react';
@@ -13,18 +12,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 
+
+
 interface RecipeDetailProps {
-  recipe: Recipe;
-  onToggleFavorite?: (id: string) => void;
-  onRate?: (id: string, rating: number) => void;
-  onUpdateNotes?: (id: string, notes: string) => void;
+    recipe: Recipe;
+    onToggleFavorite?: (id: string) => void;
+    onRate?: (id: string, rating: number) => void;
+    onUpdateNotes?: (id: string, notes: string) => void;
+    onCloseDetail?: () => void; // <-- הוסף את הפרופ הזה
 }
+
 
 const RecipeDetail: React.FC<RecipeDetailProps> = ({ 
   recipe,
   onToggleFavorite,
   onRate,
-  onUpdateNotes
+  onUpdateNotes,
+  onCloseDetail
 }) => {
   const navigate = useNavigate();
   const isRTL = recipe.isRTL || false;
@@ -35,6 +39,25 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [activeTimer, setActiveTimer] = useState<{ minutes: number, seconds: number, label: string } | null>(null);
+    useEffect(() => {
+        if (!activeTimer) return;
+        const interval = setInterval(() => {
+            setActiveTimer(prevTimer => {
+                if (!prevTimer) return null;
+                const { minutes, seconds, label } = prevTimer;
+                if (minutes === 0 && seconds === 0) {
+                    clearInterval(interval);
+                    return null; // הטיימר נגמר
+                } else if (seconds === 0) {
+                    return { minutes: minutes - 1, seconds: 59, label };
+                } else {
+                    return { minutes, seconds: seconds - 1, label };
+                }
+            });
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [activeTimer]);
+
   const [customMinutes, setCustomMinutes] = useState('5');
   const [timerRunning, setTimerRunning] = useState(false);
   const [isInCookMode, setIsInCookMode] = useState(false);
@@ -270,7 +293,8 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
       setIsInCookMode(false);
     }
   };
-  
+
+
   const handlePrevStep = () => {
     if (currentStepIndex > 0) {
       setCurrentStepIndex(prev => prev - 1);
@@ -281,9 +305,14 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
     setIsInCookMode(false);
   };
   
-  const handleGoToRecipes = () => {
-    navigate('/recipes');
-  };
+    const handleGoToRecipes = () => {
+        if (onCloseDetail) {
+            onCloseDetail(); // מנקים את ה־state אצל ההורה
+        }
+        navigate('/recipes');
+    };
+
+
   
   return (
     <motion.div 
@@ -330,7 +359,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
               <div className="mt-4 bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg flex items-center gap-2">
                 <AlarmClock className="h-5 w-5 text-blue-500 dark:text-blue-400" />
                 <span className="font-medium dark:text-blue-300">
-                  {isRTL ? "שים לב לזמן:" : "Time needed:"} 
+                  {isRTL ? "שים לב לזמן: " : "Time needed: "} 
                   {recipe.timeMarkers.find(marker => marker.step === currentStepIndex)?.duration} 
                   {isRTL ? " דקות" : " minutes"}
                 </span>
@@ -378,7 +407,9 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
             >
               <div className="flex items-center">
                 <AlarmClock className="h-5 w-5 text-blue-500 dark:text-blue-400 mr-2" />
-                <span className="font-medium dark:text-blue-300">{activeTimer.label}: </span>
+                              <span className="font-medium dark:text-blue-300">
+                                  {` ${activeTimer.label}: `}
+                              </span>
                 <span className="ml-2 text-lg font-bold dark:text-blue-200">
                   {String(activeTimer.minutes).padStart(2, '0')}:{String(activeTimer.seconds).padStart(2, '0')}
                 </span>
@@ -397,14 +428,15 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
       ) : (
         <>
           <div className={`flex ${isRTL ? 'flex-row-reverse' : 'flex-row'} justify-between items-center mb-6 print:hidden`}>
-            <Button
-              variant="ghost"
-              onClick={handleGoToRecipes}
-              className="dark:text-gray-200 dark:hover:bg-gray-700"
-            >
-              <ArrowLeft className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-              {isRTL ? 'חזרה לכל המתכונים' : 'Back to All Recipes'}
-            </Button>
+                          <Button
+                              variant="ghost"
+                              onClick={handleGoToRecipes}
+                              className="dark:text-gray-200 dark:hover:bg-gray-700"
+                          >
+                              <ArrowLeft className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                              {isRTL ? 'חזרה לכל המתכונים' : 'Back to All Recipes'}
+                          </Button>
+
             
             <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} space-x-2`}>
               <Button
@@ -517,7 +549,9 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
             >
               <div className="flex items-center">
                 <AlarmClock className="h-5 w-5 text-blue-500 dark:text-blue-400 mr-2" />
-                <span className="font-medium dark:text-blue-300">{activeTimer.label}: </span>
+                                  <span className="font-medium dark:text-blue-300">
+                                      {`${activeTimer.label}: `}
+                                  </span>
                 <span className="ml-2 text-lg font-bold dark:text-blue-200">
                   {String(activeTimer.minutes).padStart(2, '0')}:{String(activeTimer.seconds).padStart(2, '0')}
                 </span>

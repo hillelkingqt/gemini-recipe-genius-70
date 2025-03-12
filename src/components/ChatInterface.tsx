@@ -327,12 +327,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </AnimatePresence>
         
         {generatedRecipe && (
-          <motion.div 
-            className="recipe-section mt-6 p-6 bg-recipe-cream rounded-xl shadow-lg"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
-          >
+<motion.div 
+  className="recipe-section mt-6 p-6 bg-recipe-cream dark:bg-gray-800 rounded-xl shadow-lg"
+  initial={{ opacity: 0, scale: 0.95 }}
+  animate={{ opacity: 1, scale: 1 }}
+  transition={{ duration: 0.4 }}
+>
+
             <RecipeCard 
               recipe={generatedRecipe}
               showActions={false}
@@ -384,7 +385,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     placeholder={generatedRecipe.isRTL ? 
                       "לדוגמה: הוסף יותר תבלינים, הפוך לצמחוני, השתמש בפחות שמן..." : 
                       "Ex: Add more spices, make it vegetarian, use less oil..."}
-                    className="bg-white border-gray-300"
+                    className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-black dark:text-white"
                     dir={detectLanguage(editRequest) === 'he' ? 'rtl' : 'ltr'}
                     disabled={isEditingInProgress}
                   />
@@ -422,30 +423,31 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         )}
       </div>
       
-      <div className="p-6 bg-white border-t shadow-inner">
-        <div className="max-w-3xl mx-auto flex space-x-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Describe a recipe you'd like me to create..."
-            onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
-            disabled={isLoading}
-            className="bg-white border-gray-300"
-            dir={detectLanguage(input) === 'he' ? 'rtl' : 'ltr'}
-          />
-          <Button 
-            onClick={handleSendMessage} 
-            disabled={isLoading || !input.trim()}
-            className="bg-recipe-green hover:bg-recipe-green/90 flex-shrink-0 min-w-[50px]"
-          >
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
-          </Button>
-        </div>
-      </div>
+          <div className="p-6 bg-white dark:bg-gray-800 border-t dark:border-gray-700 shadow-inner">
+              <div className="max-w-3xl mx-auto flex space-x-2">
+                  <Input
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="Describe a recipe you'd like me to create..."
+                      onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
+                      disabled={isLoading}
+                      className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                      dir={detectLanguage(input) === 'he' ? 'rtl' : 'ltr'}
+                  />
+                  <Button
+                      onClick={handleSendMessage}
+                      disabled={isLoading || !input.trim()}
+                      className="bg-recipe-green hover:bg-recipe-green/90 flex-shrink-0 min-w-[50px]"
+                  >
+                      {isLoading ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                          <Send className="h-5 w-5" />
+                      )}
+                  </Button>
+              </div>
+          </div>
+
     </div>
   );
 };
