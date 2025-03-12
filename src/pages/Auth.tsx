@@ -236,48 +236,36 @@ const Auth: React.FC = () => {
                       >
                         <div className="space-y-4">
                           {/* אימייל התחברות */}
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor="email"
-                              className="flex items-center text-gray-700 dark:text-gray-300"
-                            >
-                              <Mail className="w-4 h-4 mr-2" />
-                              Email
-                            </Label>
-                            <Input
-                              id="email"
-                              type="email"
-                              placeholder="your@email.com"
-                              autoComplete="email"
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              className="w-full border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
-                            />
-                          </div>
+<div className="space-y-2">
+  <Label htmlFor="password" className="flex items-center text-gray-700 dark:text-gray-300">
+    <Lock className="w-4 h-4 mr-2" />
+    Password
+  </Label>
 
-                          {/* סיסמה התחברות */}
-<div className="relative">
-  <Input
-    id="password"
-    type={showSignInPassword ? "text" : "password"}
-    placeholder="••••••••"
-    autoComplete="current-password"
-    value={password}
-    onChange={(e) => setPassword(e.target.value)}
-    className="w-full pr-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
-  />
-  <button
-    type="button"
-    onClick={() => setShowSignInPassword((prev) => !prev)}
-    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none"
-  >
-    {showSignInPassword ? (
-      <EyeOff className="w-5 h-5" />
-    ) : (
-      <Eye className="w-5 h-5" />
-    )}
-  </button>
+  <div className="relative">
+    <Input
+      id="password"
+      type={showSignInPassword ? "text" : "password"}
+      placeholder="••••••••"
+      autoComplete="current-password"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      className="w-full h-10 pr-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
+    />
+    <button
+      type="button"
+      onClick={() => setShowSignInPassword((prev) => !prev)}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none"
+    >
+      {showSignInPassword ? (
+        <EyeOff className="w-5 h-5" />
+      ) : (
+        <Eye className="w-5 h-5" />
+      )}
+    </button>
+  </div>
 </div>
+
 
 
                           <Button
