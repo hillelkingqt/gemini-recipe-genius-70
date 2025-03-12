@@ -1,0 +1,290 @@
+
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CookingPot, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+
+const Auth: React.FC = () => {
+  const { signIn, signUp, user, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
+  
+  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(
+    location.state?.mode === 'signup' ? 'signup' : 'signin'
+  );
+  
+  // Sign In Form State
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  
+  // Sign Up Form State
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [username, setUsername] = useState('');
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (user && !isLoading) {
+      navigate('/');
+    }
+  }, [user, isLoading, navigate]);
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    await signIn(email, password);
+    setIsSubmitting(false);
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newEmail || !newPassword || !confirmPassword || !username) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    await signUp(newEmail, newPassword, username);
+    setIsSubmitting(false);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-recipe-green" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4">
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="max-w-md w-full mx-auto"
+      >
+        <div className="text-center mb-8">
+          <div className="flex justify-center">
+            <CookingPot className="h-12 w-12 text-recipe-green dark:text-green-400" />
+          </div>
+          <h1 className="mt-4 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+            Recipe Genius
+          </h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Your personal recipe assistant
+          </p>
+        </div>
+        
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl overflow-hidden">
+          <Tabs 
+            value={activeTab} 
+            onValueChange={(value) => setActiveTab(value as 'signin' | 'signup')}
+            className="w-full"
+          >
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="signin" className="py-4">Sign In</TabsTrigger>
+              <TabsTrigger value="signup" className="py-4">Create Account</TabsTrigger>
+            </TabsList>
+            
+            <div className="p-6">
+              <AnimatePresence mode="wait">
+                <TabsContent value="signin" className="mt-0">
+                  <motion.form
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: 20, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    onSubmit={handleSignIn}
+                  >
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="flex items-center text-gray-700 dark:text-gray-300">
+                          <Mail className="w-4 h-4 mr-2" />
+                          Email
+                        </Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="your@email.com"
+                          autoComplete="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="password" className="flex items-center text-gray-700 dark:text-gray-300">
+                          <Lock className="w-4 h-4 mr-2" />
+                          Password
+                        </Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          placeholder="••••••••"
+                          autoComplete="current-password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                      
+                      <Button 
+                        type="submit" 
+                        className="w-full bg-recipe-green hover:bg-recipe-green/90 text-white"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <ArrowRight className="w-4 h-4 mr-2" />
+                        )}
+                        Sign In
+                      </Button>
+                    </div>
+                  </motion.form>
+                </TabsContent>
+                
+                <TabsContent value="signup" className="mt-0">
+                  <motion.form
+                    initial={{ x: 20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: -20, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    onSubmit={handleSignUp}
+                  >
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="username" className="flex items-center text-gray-700 dark:text-gray-300">
+                          <User className="w-4 h-4 mr-2" />
+                          Username
+                        </Label>
+                        <Input
+                          id="username"
+                          placeholder="johndoe"
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="new-email" className="flex items-center text-gray-700 dark:text-gray-300">
+                          <Mail className="w-4 h-4 mr-2" />
+                          Email
+                        </Label>
+                        <Input
+                          id="new-email"
+                          type="email"
+                          placeholder="your@email.com"
+                          autoComplete="email"
+                          value={newEmail}
+                          onChange={(e) => setNewEmail(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="new-password" className="flex items-center text-gray-700 dark:text-gray-300">
+                          <Lock className="w-4 h-4 mr-2" />
+                          Password
+                        </Label>
+                        <Input
+                          id="new-password"
+                          type="password"
+                          placeholder="••••••••"
+                          autoComplete="new-password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-password" className="flex items-center text-gray-700 dark:text-gray-300">
+                          <Lock className="w-4 h-4 mr-2" />
+                          Confirm Password
+                        </Label>
+                        <Input
+                          id="confirm-password"
+                          type="password"
+                          placeholder="••••••••"
+                          autoComplete="new-password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                      
+                      <Button 
+                        type="submit" 
+                        className="w-full bg-recipe-green hover:bg-recipe-green/90 text-white"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <ArrowRight className="w-4 h-4 mr-2" />
+                        )}
+                        Create Account
+                      </Button>
+                    </div>
+                  </motion.form>
+                </TabsContent>
+              </AnimatePresence>
+            </div>
+          </Tabs>
+        </div>
+        
+        <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
+          <p>By signing in, you agree to our Terms of Service and Privacy Policy.</p>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+export default Auth;

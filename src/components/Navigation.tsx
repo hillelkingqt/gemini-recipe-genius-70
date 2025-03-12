@@ -1,13 +1,24 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { CookingPot, MessageSquare, Moon, Sun, Menu, X } from 'lucide-react';
+import { CookingPot, MessageSquare, Moon, Sun, Menu, X, LogOut, UserCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { motion } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Navigation = () => {
   const location = useLocation();
   const { isDarkMode, toggleDarkMode } = useTheme();
+  const { user, profile, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrollPosition, setScrollPosition] = useState(0);
 
@@ -20,6 +31,11 @@ export const Navigation = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Hide navigation on auth page
+  if (location.pathname === '/auth') {
+    return null;
+  }
 
   return (
     <motion.nav 
@@ -51,25 +67,29 @@ export const Navigation = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            <Link to="/">
-              <Button 
-                variant={location.pathname === '/' ? 'default' : 'ghost'}
-                className="flex items-center gap-2 font-medium dark:text-white dark:hover:bg-gray-800 glass-effect"
-              >
-                <MessageSquare className="h-5 w-5" />
-                Chat
-              </Button>
-            </Link>
-            
-            <Link to="/recipes">
-              <Button 
-                variant={location.pathname === '/recipes' ? 'default' : 'ghost'}
-                className="flex items-center gap-2 font-medium dark:text-white dark:hover:bg-gray-800 glass-effect"
-              >
-                <CookingPot className="h-5 w-5" />
-                Recipes
-              </Button>
-            </Link>
+            {user && (
+              <>
+                <Link to="/">
+                  <Button 
+                    variant={location.pathname === '/' ? 'default' : 'ghost'}
+                    className="flex items-center gap-2 font-medium dark:text-white dark:hover:bg-gray-800 glass-effect"
+                  >
+                    <MessageSquare className="h-5 w-5" />
+                    Chat
+                  </Button>
+                </Link>
+                
+                <Link to="/recipes">
+                  <Button 
+                    variant={location.pathname === '/recipes' ? 'default' : 'ghost'}
+                    className="flex items-center gap-2 font-medium dark:text-white dark:hover:bg-gray-800 glass-effect"
+                  >
+                    <CookingPot className="h-5 w-5" />
+                    Recipes
+                  </Button>
+                </Link>
+              </>
+            )}
             
             <Button 
               variant="ghost" 
@@ -80,6 +100,26 @@ export const Navigation = () => {
             >
               {isDarkMode ? <Sun className="h-5 w-5 text-yellow-400" /> : <Moon className="h-5 w-5" />}
             </Button>
+            
+            {user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative rounded-full h-10 w-10 overflow-hidden">
+                    <UserCircle className="h-6 w-6 text-recipe-green dark:text-green-400" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    {profile?.username || user.email}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => signOut()}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </motion.div>
           
           {/* Mobile menu button */}
@@ -120,35 +160,52 @@ export const Navigation = () => {
           transition={{ duration: 0.2 }}
         >
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white dark:bg-gray-900 shadow-lg">
-            <Link 
-              to="/"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${
-                location.pathname === '/' 
-                  ? 'bg-recipe-green text-white' 
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`}
-            >
-              <div className="flex items-center">
-                <MessageSquare className="h-5 w-5 mr-2" />
-                Chat
-              </div>
-            </Link>
-            
-            <Link 
-              to="/recipes"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${
-                location.pathname === '/recipes' 
-                  ? 'bg-recipe-green text-white' 
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`}
-            >
-              <div className="flex items-center">
-                <CookingPot className="h-5 w-5 mr-2" />
-                Recipes
-              </div>
-            </Link>
+            {user && (
+              <>
+                <Link 
+                  to="/"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    location.pathname === '/' 
+                      ? 'bg-recipe-green text-white' 
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <MessageSquare className="h-5 w-5 mr-2" />
+                    Chat
+                  </div>
+                </Link>
+                
+                <Link 
+                  to="/recipes"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    location.pathname === '/recipes' 
+                      ? 'bg-recipe-green text-white' 
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <CookingPot className="h-5 w-5 mr-2" />
+                    Recipes
+                  </div>
+                </Link>
+                
+                <button
+                  onClick={() => {
+                    signOut();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <div className="flex items-center">
+                    <LogOut className="h-5 w-5 mr-2" />
+                    Sign out
+                  </div>
+                </button>
+              </>
+            )}
           </div>
         </motion.div>
       )}
