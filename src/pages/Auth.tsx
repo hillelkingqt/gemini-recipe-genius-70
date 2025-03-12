@@ -236,12 +236,29 @@ const Auth: React.FC = () => {
                       >
                         <div className="space-y-4">
                           {/* אימייל התחברות */}
+{/* Email Field */}
+<div className="space-y-2">
+  <Label htmlFor="email" className="flex items-center text-gray-700 dark:text-gray-300">
+    <Mail className="w-4 h-4 mr-2" />
+    Email
+  </Label>
+  <Input
+    id="email"
+    type="email"
+    placeholder="your@email.com"
+    autoComplete="email"
+    value={email}
+    onChange={(e) => setEmail(e.target.value)}
+    className="w-full h-10 border-gray-300 dark:border-gray-600 focus:ring-recipe-green focus:border-recipe-green"
+  />
+</div>
+
+{/* Password Field */}
 <div className="space-y-2">
   <Label htmlFor="password" className="flex items-center text-gray-700 dark:text-gray-300">
     <Lock className="w-4 h-4 mr-2" />
     Password
   </Label>
-
   <div className="relative">
     <Input
       id="password"
@@ -265,6 +282,7 @@ const Auth: React.FC = () => {
     </button>
   </div>
 </div>
+
 
 
 
