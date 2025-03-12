@@ -11,10 +11,30 @@ export const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrollPosition, setScrollPosition] = useState(0);
   
+  // Check for dark mode preference on initial load
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+    setIsDarkMode(savedDarkMode);
+    
+    if (savedDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+  
   // Toggle dark mode
   const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-    document.documentElement.classList.toggle('dark');
+    const newDarkMode = !isDarkMode;
+    setIsDarkMode(newDarkMode);
+    
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    
+    localStorage.setItem('darkMode', newDarkMode.toString());
   };
   
   // Track scroll position for navbar effects
@@ -46,7 +66,7 @@ export const Navigation = () => {
               transition={{ delay: 0.2 }}
             >
               <CookingPot className="h-6 w-6 mr-2" />
-              <span className="gradient-text">Recipe Genius</span>
+              <span className="gradient-animation">Recipe Genius</span>
             </motion.div>
           </div>
           
@@ -60,7 +80,7 @@ export const Navigation = () => {
             <Link to="/">
               <Button 
                 variant={location.pathname === '/' ? 'default' : 'ghost'}
-                className="flex items-center gap-2 font-medium"
+                className="flex items-center gap-2 font-medium dark:text-white dark:hover:bg-gray-800"
               >
                 <MessageSquare className="h-5 w-5" />
                 Chat
@@ -70,7 +90,7 @@ export const Navigation = () => {
             <Link to="/recipes">
               <Button 
                 variant={location.pathname === '/recipes' ? 'default' : 'ghost'}
-                className="flex items-center gap-2 font-medium"
+                className="flex items-center gap-2 font-medium dark:text-white dark:hover:bg-gray-800"
               >
                 <CookingPot className="h-5 w-5" />
                 Recipes
@@ -81,7 +101,8 @@ export const Navigation = () => {
               variant="ghost" 
               size="icon"
               onClick={toggleDarkMode}
-              className="ml-2"
+              className="ml-2 dark:text-white dark:hover:bg-gray-800"
+              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
             >
               {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
@@ -93,7 +114,8 @@ export const Navigation = () => {
               variant="ghost"
               size="icon"
               onClick={toggleDarkMode}
-              className="mr-2"
+              className="mr-2 dark:text-white dark:hover:bg-gray-800"
+              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
             >
               {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
@@ -102,6 +124,7 @@ export const Navigation = () => {
               variant="ghost"
               size="icon"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="dark:text-white dark:hover:bg-gray-800"
             >
               {isMobileMenuOpen ? (
                 <X className="h-6 w-6" />

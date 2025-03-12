@@ -12,10 +12,15 @@ export const exportToPdf = (recipe: Recipe) => {
     return;
   }
   
+  const isRTL = recipe.isRTL || false;
+  const ingredientsLabel = recipe.ingredientsLabel || 'Ingredients';
+  const instructionsLabel = recipe.instructionsLabel || 'Instructions';
+  
   const htmlContent = `
     <!DOCTYPE html>
-    <html>
+    <html lang="${isRTL ? 'he' : 'en'}" dir="${isRTL ? 'rtl' : 'ltr'}">
     <head>
+      <meta charset="UTF-8">
       <title>${recipe.name}</title>
       <style>
         body {
@@ -24,6 +29,8 @@ export const exportToPdf = (recipe: Recipe) => {
           margin: 0;
           padding: 20px;
           color: #333;
+          direction: ${isRTL ? 'rtl' : 'ltr'};
+          text-align: ${isRTL ? 'right' : 'left'};
         }
         .container {
           max-width: 800px;
@@ -47,10 +54,12 @@ export const exportToPdf = (recipe: Recipe) => {
           margin-bottom: 10px;
         }
         ul, ol {
-          padding-left: 20px;
+          padding-${isRTL ? 'right' : 'left'}: 20px;
+          list-style-position: ${isRTL ? 'inside' : 'outside'};
         }
         li {
           margin-bottom: 8px;
+          text-align: ${isRTL ? 'right' : 'left'};
         }
         .footer {
           text-align: center;
@@ -82,22 +91,22 @@ export const exportToPdf = (recipe: Recipe) => {
       <div class="container">
         <h1>${recipe.name}</h1>
         
-        <h2>Ingredients</h2>
+        <h2>${ingredientsLabel}</h2>
         <ul>
           ${recipe.ingredients.map(ingredient => `<li>${ingredient}</li>`).join('')}
         </ul>
         
-        <h2>Instructions</h2>
+        <h2>${instructionsLabel}</h2>
         <ol>
           ${recipe.instructions.map(instruction => `<li>${instruction}</li>`).join('')}
         </ol>
         
         <div class="footer">
-          <p>Created: ${recipe.createdAt.toLocaleString()}</p>
+          <p>${isRTL ? 'נוצר:' : 'Created:'} ${new Date(recipe.createdAt).toLocaleDateString()}</p>
         </div>
         
         <div class="print-button">
-          <button onclick="window.print()">Print Recipe</button>
+          <button onclick="window.print()">${isRTL ? 'הדפס מתכון' : 'Print Recipe'}</button>
         </div>
       </div>
     </body>

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, X, ArrowLeft, CookingPot, Filter, SlidersHorizontal, Heart } from 'lucide-react';
+import { Plus, Search, X, ArrowLeft, CookingPot, Filter, SlidersHorizontal, Heart, Bookmark, Archive, CalendarRange, Clock } from 'lucide-react';
 import { Recipe } from '@/types/Recipe';
 import { useToast } from '@/components/ui/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,25 +24,28 @@ const Recipes: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  // Get recipe ID from URL if present
-// Get recipe ID from URL if present, update on location change
-useEffect(() => {
-  const urlParams = new URLSearchParams(location.search);
-  const recipeId = urlParams.get('id');
-  setSelectedRecipeId(recipeId);
-}, [location.search]);
 
+  // Get recipe ID from URL if present, update on location change
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const recipeId = urlParams.get('id');
+    if (recipeId) {
+      setSelectedRecipeId(recipeId);
+    }
+  }, [location.search]);
   
   // Update URL when a recipe is selected
-useEffect(() => {
-  if (selectedRecipeId) {
-    navigate(`/recipes?id=${selectedRecipeId}`, { replace: true });
-  } else {
-    navigate('/recipes', { replace: true });
-  }
-}, [selectedRecipeId, navigate]);
-
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    
+    if (selectedRecipeId) {
+      params.set('id', selectedRecipeId);
+      navigate(`/recipes?${params.toString()}`, { replace: true });
+    } else if (params.has('id')) {
+      params.delete('id');
+      navigate(`/recipes?${params.toString()}`, { replace: true });
+    }
+  }, [selectedRecipeId, navigate, location.search]);
   
   const handleDeleteRecipe = (id: string) => {
     removeRecipe(id);
@@ -79,27 +82,32 @@ useEffect(() => {
   
   // For showing favorite recipes
   const favoriteRecipes = recipes.filter(recipe => recipe.isFavorite);
+  
+  // For latest recipes
+  const latestRecipes = [...recipes].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10);
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
       <motion.div 
-        className="bg-gradient-to-r from-recipe-orange/90 to-recipe-orange text-white py-4 px-6"
+        className="bg-gradient-to-r from-recipe-orange/90 to-recipe-orange dark:from-orange-900 dark:to-orange-800 text-white py-4 px-6"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center">
             <CookingPot className="h-6 w-6 mr-3" />
             <h1 className="text-2xl font-bold">My Recipes</h1>
           </div>
-          <Button 
-            onClick={() => navigate('/')} 
-            className="bg-white text-recipe-orange hover:bg-white/90"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Recipe
-          </Button>
+          <div className="flex space-x-2">
+            <Button 
+              onClick={() => navigate('/')} 
+              className="bg-white text-recipe-orange dark:bg-gray-800 dark:text-orange-400 hover:bg-white/90 dark:hover:bg-gray-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Recipe
+            </Button>
+          </div>
         </div>
       </motion.div>
       
@@ -131,17 +139,17 @@ useEffect(() => {
               <div className="mb-6 relative">
                 <div className="flex flex-col md:flex-row gap-4">
                   <div className="relative flex-grow">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 dark:text-gray-500" />
                     <Input
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       placeholder="Search recipes..."
-                      className="pl-10 pr-10 bg-white border-gray-300"
+                      className="pl-10 pr-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
                     />
                     {searchTerm && (
                       <button 
                         onClick={() => setSearchTerm('')}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                       >
                         <X className="h-5 w-5" />
                       </button>
@@ -150,13 +158,13 @@ useEffect(() => {
                   
                   <Button 
                     variant="outline" 
-                    className="flex gap-2 items-center"
+                    className="flex gap-2 items-center dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800"
                     onClick={() => setShowFilters(!showFilters)}
                   >
                     <SlidersHorizontal className="h-4 w-4" />
                     Filters
                     {(filterDifficulty !== 'all' || filterTags.length > 0) && (
-                      <Badge className="bg-recipe-green ml-1">
+                      <Badge className="bg-recipe-green dark:bg-green-700 ml-1">
                         {filterDifficulty !== 'all' && filterTags.length > 0 
                           ? `${1 + filterTags.length}` 
                           : filterDifficulty !== 'all' ? '1' : `${filterTags.length}`}
@@ -173,19 +181,19 @@ useEffect(() => {
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.3 }}
-                      className="bg-gray-50 mt-4 p-4 rounded-lg shadow-sm"
+                      className="bg-gray-50 dark:bg-gray-800 mt-4 p-4 rounded-lg shadow-sm dark:shadow-gray-900"
                     >
                       <div className="flex flex-wrap gap-4">
                         <div className="flex flex-col gap-1 min-w-[200px]">
-                          <label className="text-sm font-medium text-gray-700">Difficulty</label>
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Difficulty</label>
                           <Select 
                             value={filterDifficulty} 
                             onValueChange={setFilterDifficulty}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
                               <SelectValue placeholder="All difficulties" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700">
                               <SelectItem value="all">All difficulties</SelectItem>
                               <SelectItem value="easy">Easy</SelectItem>
                               <SelectItem value="medium">Medium</SelectItem>
@@ -195,13 +203,13 @@ useEffect(() => {
                         </div>
                         
                         <div className="flex-grow">
-                          <label className="text-sm font-medium text-gray-700 block mb-1">Tags</label>
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">Tags</label>
                           <div className="flex flex-wrap gap-2">
                             {allTags.map(tag => (
                               <Badge 
                                 key={tag}
                                 variant={filterTags.includes(tag) ? "default" : "outline"}
-                                className="cursor-pointer hover:bg-recipe-green/90 transition-colors"
+                                className="cursor-pointer hover:bg-recipe-green/90 dark:hover:bg-green-800 transition-colors"
                                 onClick={() => {
                                   if (filterTags.includes(tag)) {
                                     setFilterTags(filterTags.filter(t => t !== tag));
@@ -215,7 +223,7 @@ useEffect(() => {
                               </Badge>
                             ))}
                             {allTags.length === 0 && (
-                              <span className="text-gray-500 italic">No tags available</span>
+                              <span className="text-gray-500 dark:text-gray-400 italic">No tags available</span>
                             )}
                           </div>
                         </div>
@@ -229,7 +237,7 @@ useEffect(() => {
                             setFilterDifficulty('all');
                             setFilterTags([]);
                           }}
-                          className="text-gray-700"
+                          className="text-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
                         >
                           Clear Filters
                         </Button>
@@ -240,14 +248,19 @@ useEffect(() => {
               </div>
               
               <Tabs defaultValue="all" className="mb-6">
-                <TabsList>
-                  <TabsTrigger value="all" className="relative">
+                <TabsList className="bg-gray-100 dark:bg-gray-800">
+                  <TabsTrigger value="all" className="relative data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
                     All Recipes
-                    <Badge className="ml-2 bg-gray-600">{recipes.length}</Badge>
+                    <Badge className="ml-2 bg-gray-600 dark:bg-gray-500">{recipes.length}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="favorites" className="relative">
+                  <TabsTrigger value="favorites" className="relative data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+                    <Heart className="h-4 w-4 mr-1" />
                     Favorites
-                    <Badge className="ml-2 bg-red-500">{favoriteRecipes.length}</Badge>
+                    <Badge className="ml-2 bg-red-500 dark:bg-red-700">{favoriteRecipes.length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="latest" className="relative data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+                    <Clock className="h-4 w-4 mr-1" />
+                    Latest
                   </TabsTrigger>
                 </TabsList>
                 
@@ -259,15 +272,15 @@ useEffect(() => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.1 }}
                     >
-                      <div className="inline-flex justify-center items-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                        <CookingPot className="h-8 w-8 text-gray-400" />
+                      <div className="inline-flex justify-center items-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+                        <CookingPot className="h-8 w-8 text-gray-400 dark:text-gray-500" />
                       </div>
-                      <h3 className="text-xl font-medium text-gray-900 mb-2">
+                      <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">
                         {searchTerm || filterDifficulty !== 'all' || filterTags.length > 0 
                           ? 'No recipes match your search or filters.' 
                           : 'Your recipe collection is empty.'}
                       </h3>
-                      <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                      <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
                         {searchTerm || filterDifficulty !== 'all' || filterTags.length > 0
                           ? 'Try adjusting your search terms or filters.' 
                           : 'Create your first recipe to get started with your culinary journey.'}
@@ -280,13 +293,14 @@ useEffect(() => {
                             setFilterTags([]);
                           }} 
                           variant="outline"
+                          className="dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-800"
                         >
                           Clear All Filters
                         </Button>
                       ) : (
                         <Button 
                           onClick={() => navigate('/')} 
-                          className="bg-recipe-green hover:bg-recipe-green/90"
+                          className="bg-recipe-green hover:bg-recipe-green/90 dark:bg-green-700 dark:hover:bg-green-800"
                         >
                           <Plus className="h-4 w-4 mr-2" />
                           Create Your First Recipe
@@ -309,7 +323,7 @@ useEffect(() => {
                             onDelete={handleDeleteRecipe}
                             onToggleFavorite={toggleFavorite}
                             onRate={rateRecipe}
-                            className="h-full cursor-pointer hover:border-recipe-green"
+                            className="h-full cursor-pointer hover:border-recipe-green dark:hover:border-green-600"
                             onClick={() => setSelectedRecipeId(recipe.id)}
                           />
                         </motion.div>
@@ -326,11 +340,11 @@ useEffect(() => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.1 }}
                     >
-                      <div className="inline-flex justify-center items-center w-16 h-16 rounded-full bg-red-50 mb-4">
-                        <Heart className="h-8 w-8 text-red-300" />
+                      <div className="inline-flex justify-center items-center w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/30 mb-4">
+                        <Heart className="h-8 w-8 text-red-300 dark:text-red-400" />
                       </div>
-                      <h3 className="text-xl font-medium text-gray-900 mb-2">No favorite recipes yet</h3>
-                      <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                      <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">No favorite recipes yet</h3>
+                      <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
                         Mark recipes as favorites by clicking the heart icon on any recipe card.
                       </p>
                     </motion.div>
@@ -350,11 +364,64 @@ useEffect(() => {
                             onDelete={handleDeleteRecipe}
                             onToggleFavorite={toggleFavorite}
                             onRate={rateRecipe}
-                            className="h-full cursor-pointer hover:border-recipe-green"
+                            className="h-full cursor-pointer hover:border-recipe-green dark:hover:border-green-600"
                             onClick={() => setSelectedRecipeId(recipe.id)}
                           />
                         </motion.div>
                       ))}
+                    </div>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="latest">
+                  {recipes.length === 0 ? (
+                    <motion.div 
+                      className="text-center py-12 px-4"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.1 }}
+                    >
+                      <div className="inline-flex justify-center items-center w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 mb-4">
+                        <CalendarRange className="h-8 w-8 text-blue-300 dark:text-blue-400" />
+                      </div>
+                      <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">No recipes yet</h3>
+                      <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                        Create your first recipe to see it here.
+                      </p>
+                      <Button 
+                        onClick={() => navigate('/')} 
+                        className="bg-recipe-green hover:bg-recipe-green/90 dark:bg-green-700 dark:hover:bg-green-800"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Your First Recipe
+                      </Button>
+                    </motion.div>
+                  ) : (
+                    <div>
+                      <div className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+                        Showing your {Math.min(latestRecipes.length, 10)} most recent recipes
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {latestRecipes.map((recipe, index) => (
+                          <motion.div
+                            key={recipe.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.05 }}
+                          >
+                            <RecipeCard
+                              recipe={recipe}
+                              showActions={true}
+                              onEdit={(id) => setSelectedRecipeId(id)}
+                              onDelete={handleDeleteRecipe}
+                              onToggleFavorite={toggleFavorite}
+                              onRate={rateRecipe}
+                              className="h-full cursor-pointer hover:border-recipe-green dark:hover:border-green-600"
+                              onClick={() => setSelectedRecipeId(recipe.id)}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </TabsContent>

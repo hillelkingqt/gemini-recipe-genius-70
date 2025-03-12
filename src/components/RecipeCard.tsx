@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,10 +45,10 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
 
     const getDifficultyColor = (level?: string) => {
         switch (level) {
-            case 'easy': return 'bg-green-100 text-green-800';
-            case 'medium': return 'bg-yellow-100 text-yellow-800';
-            case 'hard': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'easy': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+            case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+            case 'hard': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+            default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
         }
     };
 
@@ -55,6 +56,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
     recipe-card overflow-hidden transition-all duration-300 shadow-lg hover:shadow-xl
     ${className}
     ${isRTL ? 'rtl text-right' : 'ltr text-left'}
+    dark:bg-gray-800 dark:border-gray-700
   `;
 
     const handleRate = (newRating: number) => {
@@ -68,12 +70,12 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
     if (!recipe.isRecipe && recipe.content) {
         return (
             <Card className={cardClasses} onClick={onClick}>
-                <CardHeader className="bg-gradient-to-r from-blue-100 to-indigo-50 pb-2">
-                    <CardTitle className="text-primary text-xl font-bold">{recipe.name}</CardTitle>
+                <CardHeader className="bg-gradient-to-r from-blue-100 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 pb-2">
+                    <CardTitle className="text-primary dark:text-white text-xl font-bold">{recipe.name}</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-4">
-                    <div className="p-4 bg-gray-50 rounded-lg">
-                        <p className={`text-gray-700 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <p className={`text-gray-700 dark:text-gray-300 ${isRTL ? 'text-right' : 'text-left'}`}>
                             {recipe.content}
                         </p>
                     </div>
@@ -94,12 +96,13 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
                     className={`
             bg-gradient-to-r
             ${isRTL ? 'from-recipe-lightGreen/20 to-recipe-green/10' : 'from-recipe-green/10 to-recipe-lightGreen/20'}
+            dark:from-green-900/20 dark:to-green-800/10
             pb-2
             flex flex-col items-center
           `}
                 >
                     {/* ---- שם המתכון במרכז ---- */}
-                    <CardTitle className="text-recipe-green text-xl font-bold text-center">
+                    <CardTitle className="text-recipe-green dark:text-green-400 text-xl font-bold text-center">
                         {recipe.name}
                     </CardTitle>
 
@@ -113,19 +116,19 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
                                 </Badge>
                             )}
                             {estimatedTime && (
-                                <Badge variant="outline" className="bg-blue-100 text-blue-800 flex items-center gap-1">
+                                <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 flex items-center gap-1">
                                     <Clock className="h-3 w-3" />
                                     {estimatedTime}
                                 </Badge>
                             )}
                             {tags && tags.slice(0, 2).map((tag, idx) => (
-                                <Badge key={idx} variant="outline" className="bg-purple-100 text-purple-800 flex items-center gap-1">
+                                <Badge key={idx} variant="outline" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300 flex items-center gap-1">
                                     <Tag className="h-3 w-3" />
                                     {tag}
                                 </Badge>
                             ))}
                             {tags && tags.length > 2 && (
-                                <Badge variant="outline" className="bg-gray-100 text-gray-800">
+                                <Badge variant="outline" className="bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
                                     +{tags.length - 2}
                                 </Badge>
                             )}
@@ -141,10 +144,10 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
                                 e.stopPropagation();
                                 onToggleFavorite(recipeId);
                             }}
-                            className="text-gray-400 hover:text-red-500 transition-colors self-end mt-2"
+                            className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors self-end mt-2"
                             aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                         >
-                            <Heart className={`h-5 w-5 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
+                            <Heart className={`h-5 w-5 ${isFavorite ? 'fill-red-500 text-red-500 dark:fill-red-400 dark:text-red-400' : ''}`} />
                         </motion.button>
                     )}
                 </CardHeader>
@@ -152,10 +155,10 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
                 <CardContent className="pt-4 flex-grow">
                     <div className="space-y-6">
                         {/* --- בלוק מצרכים --- */}
-                        <div className={`bg-gray-50 rounded-lg p-4 ${isRTL ? 'text-right' : 'text-left'}`}>
+                        <div className={`bg-gray-50 dark:bg-gray-700 rounded-lg p-4 ${isRTL ? 'text-right' : 'text-left'}`}>
                             <h3
                                 className={`
-                  text-lg font-semibold text-recipe-orange mb-3
+                  text-lg font-semibold text-recipe-orange dark:text-orange-400 mb-3
                   ${isRTL ? 'text-right' : 'text-left'}
                 `}
                             >
@@ -169,12 +172,12 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
                                 }
                             >
                                 {recipe.ingredients.slice(0, 5).map((ingredient, index) => (
-                                    <li key={index} className="text-sm text-gray-700">
+                                    <li key={index} className="text-sm text-gray-700 dark:text-gray-300">
                                         {ingredient}
                                     </li>
                                 ))}
                                 {recipe.ingredients.length > 5 && (
-                                    <li className="text-sm text-gray-500 italic">
+                                    <li className="text-sm text-gray-500 dark:text-gray-400 italic">
                                         {isRTL
                                             ? `ועוד ${recipe.ingredients.length - 5} מצרכים...`
                                             : `and ${recipe.ingredients.length - 5} more ingredients...`}
@@ -184,10 +187,10 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
                         </div>
 
                         {/* --- בלוק אופן ההכנה --- */}
-                        <div className={`bg-gray-50 rounded-lg p-4 ${isRTL ? 'text-right' : 'text-left'}`}>
+                        <div className={`bg-gray-50 dark:bg-gray-700 rounded-lg p-4 ${isRTL ? 'text-right' : 'text-left'}`}>
                             <h3
                                 className={`
-                  text-lg font-semibold text-recipe-orange mb-3
+                  text-lg font-semibold text-recipe-orange dark:text-orange-400 mb-3
                   ${isRTL ? 'text-right' : 'text-left'}
                 `}
                             >
@@ -201,12 +204,12 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
                                 }
                             >
                                 {recipe.instructions.slice(0, 3).map((instruction, index) => (
-                                    <li key={index} className="text-sm text-gray-700">
+                                    <li key={index} className="text-sm text-gray-700 dark:text-gray-300">
                                         {instruction}
                                     </li>
                                 ))}
                                 {recipe.instructions.length > 3 && (
-                                    <li className="text-sm text-gray-500 italic">
+                                    <li className="text-sm text-gray-500 dark:text-gray-400 italic">
                                         {isRTL
                                             ? `ועוד ${recipe.instructions.length - 3} צעדים...`
                                             : `and ${recipe.instructions.length - 3} more steps...`}
@@ -233,11 +236,11 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
                                                 className="focus:outline-none"
                                             >
                                                 <Star
-                                                    className={`h-5 w-5 ${currentRating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                                                    className={`h-5 w-5 ${currentRating >= star ? 'fill-yellow-400 text-yellow-400 dark:fill-yellow-300 dark:text-yellow-300' : 'text-gray-300 dark:text-gray-600'}`}
                                                 />
                                             </button>
                                         </TooltipTrigger>
-                                        <TooltipContent>
+                                        <TooltipContent className="dark:bg-gray-800 dark:text-gray-200">
                                             <p>Rate {star} star{star !== 1 ? 's' : ''}</p>
                                         </TooltipContent>
                                     </Tooltip>
@@ -254,7 +257,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
                                         e.stopPropagation();
                                         onEdit(recipeId);
                                     }}
-                                    className="text-recipe-green border-recipe-green hover:bg-recipe-green/10"
+                                    className="text-recipe-green border-recipe-green hover:bg-recipe-green/10 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-900/20"
                                 >
                                     <Edit className="h-4 w-4 mr-1" />
                                     {isRTL ? 'ערוך' : 'Edit'}
@@ -268,7 +271,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
                                         e.stopPropagation();
                                         onDelete(recipeId);
                                     }}
-                                    className="text-destructive border-destructive hover:bg-destructive/10"
+                                    className="text-destructive border-destructive hover:bg-destructive/10 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/20"
                                 >
                                     <Trash className="h-4 w-4 mr-1" />
                                     {isRTL ? 'מחק' : 'Delete'}
