@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Recipe, RecipeResponse } from '@/types/Recipe';
 import { toast } from '@/hooks/use-toast';
@@ -216,6 +215,20 @@ export function useRecipes() {
     });
   };
 
+  const saveChatState = (messages: any[], currentRecipe: RecipeResponse | null) => {
+    if (!currentRecipe?.isRecipe) {
+      localStorage.setItem('chat_messages', JSON.stringify(messages));
+      if (currentRecipe) {
+        localStorage.setItem('current_recipe', JSON.stringify(currentRecipe));
+      }
+    }
+  };
+
+  const clearChatState = () => {
+    localStorage.removeItem('chat_messages');
+    localStorage.removeItem('current_recipe');
+  };
+
   return {
     recipes,
     addRecipe,
@@ -227,5 +240,7 @@ export function useRecipes() {
     addNote,
     updateRecipeStatus,
     updateServings,
+    saveChatState,
+    clearChatState,
   };
 }

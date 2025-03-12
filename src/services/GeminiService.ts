@@ -81,7 +81,11 @@ Please provide:
 - Servings information
 - Quick reply suggestions for recipe variations (e.g., "Make it vegetarian", "Make it spicier", "Healthier version")
 
-IMPORTANT: For quick replies, include 2-3 relevant suggestions based on the recipe, such as dietary modifications or flavor variations.
+IMPORTANT: For quick replies, include 2-3 relevant suggestions based on the recipe context, such as:
+- Dietary modifications (vegetarian, vegan, gluten-free)
+- Flavor variations (spicier, milder, different herbs)
+- Health-focused changes (lower calories, higher protein)
+Each quick reply should include an appropriate emoji.
 
 IMPORTANT FORMATTING GUIDELINES:
 1. DO NOT use category labels like "For the dough:" or "For the sauce:" before ingredients. List all ingredients directly.

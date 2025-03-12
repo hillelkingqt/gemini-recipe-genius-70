@@ -264,6 +264,51 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     return hebrewPattern.test(text) ? 'he' : 'en';
   };
   
+  const renderMessage = (message: Message) => (
+    <motion.div 
+      key={message.id}
+      className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <div className={`message-bubble ${
+        message.sender === 'user' 
+          ? 'bg-recipe-green/10 text-black dark:text-white dark:bg-recipe-green/20' 
+          : 'bg-gray-100 text-black dark:bg-gray-800 dark:text-white'
+      } ${message.isRTL ? 'rtl text-right' : 'ltr text-left'}`}
+        style={{ 
+          maxWidth: '80%', 
+          borderRadius: '18px', 
+          padding: '12px 16px', 
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        }}
+      >
+        {message.text}
+        {message.sender === 'ai' && message.quickReplies && message.quickReplies.length > 0 && (
+          <motion.div 
+            className="flex flex-wrap gap-2 mt-3"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            {message.quickReplies.map((reply, index) => (
+              <Button
+                key={index}
+                onClick={() => handleQuickReply(reply)}
+                variant="outline"
+                className="text-sm bg-white/50 dark:bg-gray-700/50 hover:bg-white/80 dark:hover:bg-gray-700/80 transition-colors"
+              >
+                {reply.emoji && <span className="mr-1">{reply.emoji}</span>}
+                {reply.text}
+              </Button>
+            ))}
+          </motion.div>
+        )}
+      </div>
+    </motion.div>
+  );
+  
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -275,49 +320,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             transition={{ duration: 0.5 }}
           >
             {messages.map((message) => (
-              <motion.div 
-                key={message.id} 
-                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div 
-                  className={`message-bubble ${
-                    message.sender === 'user' 
-                      ? 'bg-recipe-green/10 text-black dark:text-white dark:bg-recipe-green/20' 
-                      : 'bg-gray-100 text-black dark:bg-gray-800 dark:text-white'
-                  } ${message.isRTL ? 'rtl text-right' : 'ltr text-left'}`}
-                  style={{ 
-                    maxWidth: '80%', 
-                    borderRadius: '18px', 
-                    padding: '12px 16px', 
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-                  }}
-                >
-                  {message.text}
-                  {message.sender === 'ai' && message.quickReplies && message.quickReplies.length > 0 && (
-                    <motion.div 
-                      className="flex flex-wrap gap-2 mt-3"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      {message.quickReplies.map((reply, index) => (
-                        <Button
-                          key={index}
-                          onClick={() => handleQuickReply(reply)}
-                          variant="outline"
-                          className="text-sm bg-white/50 dark:bg-gray-700/50 hover:bg-white/80 dark:hover:bg-gray-700/80 transition-colors"
-                        >
-                          {reply.emoji && <span className="mr-1">{reply.emoji}</span>}
-                          {reply.text}
-                        </Button>
-                      ))}
-                    </motion.div>
-                  )}
-                </div>
-              </motion.div>
+              renderMessage(message)
             ))}
             <div ref={messagesEndRef} />
           </motion.div>
