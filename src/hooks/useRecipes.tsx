@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Recipe, RecipeResponse } from '@/types/Recipe';
+import { toast } from '@/hooks/use-toast';
 
 export function useRecipes() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -20,13 +21,32 @@ export function useRecipes() {
       } catch (error) {
         console.error('Error parsing saved recipes:', error);
         setRecipes([]);
+        
+        // Show error toast
+        toast({
+          title: "Error loading recipes",
+          description: "There was a problem loading your saved recipes.",
+          variant: "destructive",
+        });
       }
     }
   }, []);
   
   // Save recipes to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('recipes', JSON.stringify(recipes));
+    try {
+      localStorage.setItem('recipes', JSON.stringify(recipes));
+      console.log('Recipes saved to localStorage:', recipes);
+    } catch (error) {
+      console.error('Error saving recipes to localStorage:', error);
+      
+      // Show error toast
+      toast({
+        title: "Error saving recipes",
+        description: "There was a problem saving your recipes.",
+        variant: "destructive",
+      });
+    }
   }, [recipes]);
   
   const addRecipe = (recipeResponse: RecipeResponse, status: 'draft' | 'accepted' | 'rejected' = 'accepted') => {
@@ -65,6 +85,16 @@ export function useRecipes() {
     // Immediately save to localStorage to ensure it persists
     localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
     
+    // Show success toast
+    toast({
+      title: status === 'accepted' ? "Recipe added" : status === 'draft' ? "Recipe saved as draft" : "Recipe rejected but saved",
+      description: `"${newRecipe.name}" has been ${status === 'accepted' ? 'added to' : 'saved in'} your collection.`,
+      duration: 3000,
+    });
+    
+    console.log('New recipe added:', newRecipe);
+    console.log('Current recipes state:', updatedRecipes);
+    
     return newRecipe;
   };
   
@@ -74,6 +104,15 @@ export function useRecipes() {
     );
     setRecipes(updatedRecipes);
     localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
+    
+    const recipe = recipes.find(r => r.id === id);
+    if (recipe) {
+      toast({
+        title: recipe.isFavorite ? "Removed from favorites" : "Added to favorites",
+        description: `"${recipe.name}" has been ${recipe.isFavorite ? 'removed from' : 'added to'} your favorites.`,
+        duration: 2000,
+      });
+    }
   };
   
   const rateRecipe = (id: string, rating: number) => {
@@ -82,6 +121,15 @@ export function useRecipes() {
     );
     setRecipes(updatedRecipes);
     localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
+    
+    const recipe = recipes.find(r => r.id === id);
+    if (recipe) {
+      toast({
+        title: "Recipe rated",
+        description: `You gave "${recipe.name}" a rating of ${rating} stars.`,
+        duration: 2000,
+      });
+    }
   };
   
   const addNote = (id: string, note: string) => {
@@ -90,12 +138,27 @@ export function useRecipes() {
     );
     setRecipes(updatedRecipes);
     localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
+    
+    toast({
+      title: "Notes saved",
+      description: "Your personal notes for this recipe have been saved.",
+      duration: 2000,
+    });
   };
   
   const removeRecipe = (id: string) => {
+    const recipeToRemove = recipes.find(r => r.id === id);
     const updatedRecipes = recipes.filter(recipe => recipe.id !== id);
     setRecipes(updatedRecipes);
     localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
+    
+    if (recipeToRemove) {
+      toast({
+        title: "Recipe deleted",
+        description: `"${recipeToRemove.name}" has been removed from your collection.`,
+        duration: 3000,
+      });
+    }
   };
   
   const getRecipe = (id: string) => {
@@ -108,6 +171,12 @@ export function useRecipes() {
     );
     setRecipes(updatedRecipes);
     localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
+    
+    toast({
+      title: "Recipe updated",
+      description: "The recipe has been successfully updated.",
+      duration: 2000,
+    });
   };
   
   const updateRecipeStatus = (id: string, status: 'draft' | 'accepted' | 'rejected') => {
@@ -116,6 +185,21 @@ export function useRecipes() {
     );
     setRecipes(updatedRecipes);
     localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
+    
+    const statusMessages = {
+      'draft': 'saved as draft',
+      'accepted': 'accepted',
+      'rejected': 'rejected but saved',
+    };
+    
+    const recipe = recipes.find(r => r.id === id);
+    if (recipe) {
+      toast({
+        title: `Recipe ${statusMessages[status]}`,
+        description: `"${recipe.name}" has been ${statusMessages[status]}.`,
+        duration: 3000,
+      });
+    }
   };
   
   const updateServings = (id: string, servings: number) => {
@@ -124,6 +208,12 @@ export function useRecipes() {
     );
     setRecipes(updatedRecipes);
     localStorage.setItem('recipes', JSON.stringify(updatedRecipes));
+    
+    toast({
+      title: "Servings updated",
+      description: `Recipe updated to serve ${servings} people.`,
+      duration: 2000,
+    });
   };
 
   return {

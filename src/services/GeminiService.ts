@@ -81,6 +81,12 @@ Please provide:
 - Seasonal recommendations if applicable
 - Servings information
 
+IMPORTANT FORMATTING GUIDELINES:
+1. DO NOT use category labels like "For the dough:" or "For the sauce:" before ingredients. List all ingredients directly.
+2. Each ingredient should start with the quantity followed by the ingredient name.
+3. All ingredients should be in a simple list format.
+4. Instructions should be clear, concise steps without section headers.
+
 Respond ONLY with a complete, valid JSON object using this exact structure, nothing else:
 {
   "name": "Recipe Name",
@@ -188,6 +194,12 @@ The JSON must be valid and parseable.`;
           throw new Error('Invalid recipe format');
         }
         
+        // Process ingredients to remove any "For the X:" prefix patterns
+        const cleanedIngredients = parsedResult.ingredients.map((ing: string) => {
+          // Remove prefixes like "For the dough:" or "- For the sauce:"
+          return ing.replace(/^(-\s*)?(For the [^:]+:)\s*/i, '');
+        });
+        
         // Get proper RTL setting based on content language
         const isRTL = parsedResult.isRTL !== undefined 
           ? parsedResult.isRTL 
@@ -199,7 +211,7 @@ The JSON must be valid and parseable.`;
         
         return {
           name: parsedResult.name,
-          ingredients: parsedResult.ingredients,
+          ingredients: cleanedIngredients,
           instructions: parsedResult.instructions,
           isRecipe: true,
           isRTL,
@@ -251,6 +263,12 @@ Please provide:
 - Nutrition information if possible
 - Cuisine type
 - Seasonal recommendations if applicable
+
+IMPORTANT FORMATTING GUIDELINES:
+1. DO NOT use category labels like "For the dough:" or "For the sauce:" before ingredients. List all ingredients directly.
+2. Each ingredient should start with the quantity followed by the ingredient name.
+3. All ingredients should be in a simple list format.
+4. Instructions should be clear, concise steps without section headers.
 
 For the "timeMarkers" field, identify any steps that require waiting or timed cooking (like "bake for 20 minutes" or "let rise for 1 hour"). Extract these times and create timeMarker objects with:
 - step: the step number in the instructions array (starting from 0)

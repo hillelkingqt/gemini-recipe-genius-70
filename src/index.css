@@ -43,6 +43,15 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Recipe colors */
+    --recipe-green: 142 72% 29%;
+    --recipe-green-light: 142 70% 45%;
+    --recipe-green-dark: 142 72% 20%;
+    --recipe-orange: 33 100% 50%;
+    --recipe-orange-light: 35 100% 60%;
+    --recipe-orange-dark: 30 100% 45%;
+    --recipe-cream: 48 100% 95%;
   }
 
   .dark {
@@ -73,6 +82,15 @@
     --border: 12 6.5% 15.1%;
     --input: 12 6.5% 15.1%;
     --ring: 142 70.6% 45.3%;
+    
+    /* Recipe colors for dark mode */
+    --recipe-green: 142 65% 40%;
+    --recipe-green-light: 142 60% 50%;
+    --recipe-green-dark: 142 70% 20%;
+    --recipe-orange: 33 90% 55%;
+    --recipe-orange-light: 35 90% 65%;
+    --recipe-orange-dark: 30 90% 45%;
+    --recipe-cream: 48 30% 15%;
   }
 }
 
@@ -86,31 +104,29 @@
   }
   
   /* RTL support */
-.rtl {
-  direction: rtl;
-  text-align: right;
-}
+  .rtl {
+    direction: rtl;
+    text-align: right;
+  }
 
-.ltr {
-  direction: ltr;
-  text-align: left;
-}
-
-}
-@layer utilities {
-    .rtl ul,
-    .rtl ol {
-        list-style-position: inside; 
-        padding-right: 1.5rem; 
-        padding-left: 0; 
-    }
-
-    .rtl li {
-        text-align: right;
-    }
+  .ltr {
+    direction: ltr;
+    text-align: left;
+  }
 }
 
 @layer utilities {
+  .rtl ul,
+  .rtl ol {
+    list-style-position: inside; 
+    padding-right: 1.5rem; 
+    padding-left: 0; 
+  }
+
+  .rtl li {
+    text-align: right;
+  }
+
   .recipe-card {
     @apply transition-all duration-300 hover:shadow-lg hover:scale-[1.01];
   }
@@ -143,21 +159,60 @@
   .card-rise {
     @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-md;
   }
+  
+  /* Improved RTL support */
+  .rtl-list {
+    list-style-position: inside;
+    padding-right: 1.5rem;
+    padding-left: 0;
+    text-align: right;
+  }
+  
+  .ltr-list {
+    list-style-position: outside;
+    padding-left: 1.5rem;
+    padding-right: 0;
+    text-align: left;
+  }
+  
+  /* Cooking mode animations */
+  .cooking-step {
+    @apply transition-all duration-500 transform;
+  }
+  
+  .cooking-step-enter {
+    @apply opacity-0 translate-x-10;
+  }
+  
+  .cooking-step-enter-active {
+    @apply opacity-100 translate-x-0;
+  }
+  
+  .cooking-step-exit {
+    @apply opacity-100 translate-x-0;
+  }
+  
+  .cooking-step-exit-active {
+    @apply opacity-0 -translate-x-10;
+  }
 }
+
+/* Fix for RTL lists and text alignment */
 .rtl ul,
 .rtl ol {
     direction: rtl;
     text-align: right;
-    list-style-position: outside;
+    list-style-position: inside;
     padding-right: 1.5rem;
     margin: 1em 0;
 }
 
 .rtl li {
     margin: 0.5em 0;
+    text-align: right;
 }
 
-
+/* Beautiful gradient animation for buttons and headers */
 @keyframes gradientShift {
   0% {
     background-position: 0% 50%;
@@ -176,7 +231,38 @@
   animation: gradientShift 5s ease infinite;
 }
 
-/* Print styles */
+/* Cooking mode styles */
+.cooking-mode {
+  @apply bg-white p-6 rounded-xl shadow-md animate-fade-in;
+}
+
+.step-highlight {
+  @apply bg-amber-50 border-l-4 border-amber-500 pl-3 py-1;
+}
+
+/* Tag styles with hover effects */
+.recipe-tag {
+  @apply px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 
+         hover:bg-gray-200 transition-colors cursor-pointer inline-flex items-center gap-1;
+}
+
+.recipe-tag-green {
+  @apply bg-green-100 text-green-800 hover:bg-green-200;
+}
+
+.recipe-tag-blue {
+  @apply bg-blue-100 text-blue-800 hover:bg-blue-200;
+}
+
+.recipe-tag-purple {
+  @apply bg-purple-100 text-purple-800 hover:bg-purple-200;
+}
+
+.recipe-tag-orange {
+  @apply bg-orange-100 text-orange-800 hover:bg-orange-200;
+}
+
+/* Enhanced print styles */
 @media print {
   .no-print {
     display: none !important;
@@ -198,4 +284,73 @@
     margin-top: 5mm;
     margin-bottom: 3mm;
   }
+  
+  .recipe-section {
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+    border: none;
+  }
+  
+  .cooking-mode {
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+  }
+}
+
+/* Button animations */
+.btn-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(46, 125, 50, 0.7);
+  }
+  
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(46, 125, 50, 0);
+  }
+  
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(46, 125, 50, 0);
+  }
+}
+
+/* Timer styles */
+.timer-display {
+  @apply text-3xl font-bold text-center p-4 rounded-lg bg-gray-50 border border-gray-200;
+}
+
+/* Cooking mode step-by-step view */
+.step-indicator {
+  @apply flex items-center gap-2 mb-4;
+}
+
+.step-indicator-item {
+  @apply w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border;
+}
+
+.step-indicator-item.active {
+  @apply bg-recipe-green text-white border-recipe-green;
+}
+
+.step-indicator-item.completed {
+  @apply bg-gray-200 text-gray-700 border-gray-300;
+}
+
+.step-indicator-item.upcoming {
+  @apply bg-white text-gray-400 border-gray-300;
+}
+
+.step-indicator-line {
+  @apply h-0.5 flex-grow bg-gray-200;
+}
+
+.step-indicator-line.completed {
+  @apply bg-recipe-green;
 }

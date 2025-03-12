@@ -2,15 +2,16 @@
 import React, { useState } from 'react';
 import { Recipe } from '@/types/Recipe';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Printer, Download, Heart, Star, Clock, Tag, Timer, FileText, ShoppingBag, Edit, Save, AlarmClock } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Heart, Star, Clock, Tag, Timer, FileText, ShoppingBag, Edit, Save, AlarmClock, PlayCircle } from 'lucide-react';
 import { exportToPdf } from '@/utils/pdfExport';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { toast } from '@/hooks/use-toast';
 
 interface RecipeDetailProps {
   recipe: Recipe;
@@ -36,6 +37,8 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
   const [activeTimer, setActiveTimer] = useState<{ minutes: number, seconds: number, label: string } | null>(null);
   const [customMinutes, setCustomMinutes] = useState('5');
   const [timerRunning, setTimerRunning] = useState(false);
+  const [isInCookMode, setIsInCookMode] = useState(false);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   
   const handlePrint = () => {
     window.print();
@@ -81,12 +84,18 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
     setActiveTimer({ minutes, seconds: 0, label });
     setTimerRunning(true);
     setIsTimerOpen(false);
+    
+    toast({
+      title: isRTL ? "טיימר הופעל" : "Timer started",
+      description: isRTL ? `${label} - ${minutes} דקות` : `${label} - ${minutes} minutes`,
+      duration: 3000,
+    });
   };
   
   const startCustomTimer = () => {
     const mins = parseInt(customMinutes);
     if (!isNaN(mins) && mins > 0) {
-      startTimer(mins, `Custom timer (${mins} min)`);
+      startTimer(mins, `${isRTL ? 'טיימר מותאם אישית' : 'Custom timer'} (${mins} ${isRTL ? 'דקות' : 'min'})`);
     }
   };
   
@@ -99,6 +108,78 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
     }
   };
   
+  const handleStartCooking = () => {
+    setIsInCookMode(true);
+    setCurrentStepIndex(0);
+    
+    toast({
+      title: isRTL ? "מתחילים לבשל!" : "Let's start cooking!",
+      description: isRTL ? `${recipe.name} - הוראות שלב אחר שלב` : `${recipe.name} - step by step instructions`,
+      duration: 3000,
+    });
+    
+    // Check if first step has a timer
+    const firstStepTimer = recipe.timeMarkers?.find(marker => marker.step === 0);
+    if (firstStepTimer) {
+      toast({
+        title: isRTL ? "שים לב לזמן" : "Time note",
+        description: isRTL 
+          ? `שלב זה דורש ${firstStepTimer.duration} דקות ${firstStepTimer.description}`
+          : `This step requires ${firstStepTimer.duration} minutes for ${firstStepTimer.description}`,
+        duration: 5000,
+      });
+    }
+  };
+  
+  const handleNextStep = () => {
+    if (currentStepIndex < recipe.instructions.length - 1) {
+      setCurrentStepIndex(prev => prev + 1);
+      
+      // Check if next step has a timer
+      const nextStepTimer = recipe.timeMarkers?.find(marker => marker.step === currentStepIndex + 1);
+      if (nextStepTimer) {
+        toast({
+          title: isRTL ? "שים לב לזמן" : "Time note",
+          description: isRTL 
+            ? `שלב זה דורש ${nextStepTimer.duration} דקות ${nextStepTimer.description}`
+            : `This step requires ${nextStepTimer.duration} minutes for ${nextStepTimer.description}`,
+          action: <Button 
+            size="sm" 
+            className="bg-recipe-green text-white"
+            onClick={() => startTimer(nextStepTimer.duration, nextStepTimer.description)}
+          >
+            {isRTL ? "הפעל טיימר" : "Start Timer"}
+          </Button>,
+          duration: 10000,
+        });
+      }
+    } else {
+      // Last step
+      toast({
+        title: isRTL ? "כל הכבוד!" : "Great job!",
+        description: isRTL ? "סיימת להכין את המתכון!" : "You've completed the recipe!",
+        duration: 5000,
+      });
+      setIsInCookMode(false);
+    }
+  };
+  
+  const handlePrevStep = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(prev => prev - 1);
+    }
+  };
+  
+  const handleExitCookMode = () => {
+    setIsInCookMode(false);
+  };
+  
+  const handleGoToRecipes = () => {
+    // Force a page reload when navigating to recipes
+    navigate('/recipes');
+    window.location.href = '/recipes';
+  };
+  
   return (
     <motion.div 
       dir={isRTL ? "rtl" : "ltr"}
@@ -107,307 +188,418 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <div className={`flex ${isRTL ? 'flex-row-reverse' : 'flex-row'} justify-between items-center mb-6 print:hidden`}>
-<Button
-  variant="ghost"
-  onClick={() => navigate('/recipes')}
->
-  <ArrowLeft className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-  {isRTL ? 'חזרה לכל המתכונים' : 'Back to All Recipes'}
-</Button>
-
-        
-        <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} space-x-2`}>
-          <Button
-            variant="outline"
-            onClick={handlePrint}
-            className="text-recipe-green border-recipe-green hover:bg-recipe-green/10"
-          >
-            <Printer className="h-4 w-4 mr-2" />
-            {isRTL ? 'הדפסה' : 'Print'}
-          </Button>
-          
-          <Button
-            variant="outline"
-            onClick={handleExportPdf}
-            className="text-recipe-orange border-recipe-orange hover:bg-recipe-orange/10"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            {isRTL ? 'ייצוא ל-PDF' : 'Export PDF'}
-          </Button>
-          
-          <Button
-            variant="outline"
-            onClick={generateShoppingList}
-            className="text-blue-600 border-blue-600 hover:bg-blue-50"
-          >
-            <ShoppingBag className="h-4 w-4 mr-2" />
-            {isRTL ? 'רשימת קניות' : 'Shopping List'}
-          </Button>
-          
-          <Dialog open={isTimerOpen} onOpenChange={setIsTimerOpen}>
-            <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="text-purple-600 border-purple-600 hover:bg-purple-50"
-              >
-                <Timer className="h-4 w-4 mr-2" />
-                {isRTL ? 'טיימר' : 'Timer'}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{isRTL ? 'הגדר טיימר למתכון' : 'Set Recipe Timer'}</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={() => startTimer(5, '5 minutes')} variant="outline">5 {isRTL ? 'דקות' : 'minutes'}</Button>
-                  <Button onClick={() => startTimer(10, '10 minutes')} variant="outline">10 {isRTL ? 'דקות' : 'minutes'}</Button>
-                  <Button onClick={() => startTimer(15, '15 minutes')} variant="outline">15 {isRTL ? 'דקות' : 'minutes'}</Button>
-                  <Button onClick={() => startTimer(30, '30 minutes')} variant="outline">30 {isRTL ? 'דקות' : 'minutes'}</Button>
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    value={customMinutes}
-                    onChange={(e) => setCustomMinutes(e.target.value)}
-                    placeholder={isRTL ? 'דקות מותאמות אישית' : 'Custom minutes'}
-                    min="1"
-                    max="999"
-                  />
-                  <Button onClick={startCustomTimer}>{isRTL ? 'התחל' : 'Start'}</Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
-      
-      <div className="flex justify-between items-center mb-4">
-        <h1 className={`text-3xl font-bold text-recipe-green ${isRTL ? 'text-right mr-2' : 'text-left ml-2'}`}>
-          {recipe.name}
-        </h1>
-        
-        <div className="flex items-center space-x-4">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={handleToggleFavorite}
-            className="text-gray-400 hover:text-red-500 transition-colors focus:outline-none"
-            aria-label={recipe.isFavorite ? "Remove from favorites" : "Add to favorites"}
-          >
-            <Heart className={`h-6 w-6 ${recipe.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-          </motion.button>
-          
-          <div className="flex">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                onClick={() => handleRate(star)}
-                className="focus:outline-none"
-              >
-                <Star 
-                  className={`h-6 w-6 ${recipe.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} 
-                />
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-      
-      {/* Recipe metadata */}
-      <div className={`flex flex-wrap gap-2 mb-6 ${isRTL ? 'justify-end' : 'justify-start'}`}>
-        {recipe.difficulty && (
-          <Badge variant="outline" className={`${getDifficultyColor(recipe.difficulty)} flex items-center gap-1 px-3 py-1`}>
-            <FileText className="h-3 w-3" />
-            {recipe.difficulty}
-          </Badge>
-        )}
-        
-        {recipe.estimatedTime && (
-          <Badge variant="outline" className="bg-blue-100 text-blue-800 flex items-center gap-1 px-3 py-1">
-            <Clock className="h-3 w-3" />
-            {recipe.estimatedTime}
-          </Badge>
-        )}
-        
-        {recipe.calories && (
-          <Badge variant="outline" className="bg-orange-100 text-orange-800 flex items-center gap-1 px-3 py-1">
-            <FileText className="h-3 w-3" />
-            {recipe.calories}
-          </Badge>
-        )}
-        
-        {recipe.tags && recipe.tags.map((tag, idx) => (
-          <Badge key={idx} variant="outline" className="bg-purple-100 text-purple-800 flex items-center gap-1 px-3 py-1">
-            <Tag className="h-3 w-3" />
-            {tag}
-          </Badge>
-        ))}
-      </div>
-      
-      {/* Active timer notification */}
-      {activeTimer && (
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center justify-between"
-        >
-          <div className="flex items-center">
-            <AlarmClock className="h-5 w-5 text-blue-500 mr-2" />
-            <span className="font-medium">{activeTimer.label}: </span>
-            <span className="ml-2 text-lg font-bold">
-              {String(activeTimer.minutes).padStart(2, '0')}:{String(activeTimer.seconds).padStart(2, '0')}
-            </span>
-          </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setActiveTimer(null)}
-            className="text-blue-600 border-blue-300"
-          >
-            {isRTL ? 'בטל' : 'Cancel'}
-          </Button>
-        </motion.div>
-      )}
-      
-      <Tabs defaultValue="recipe" className="mt-6">
-        <TabsList className="mb-4">
-          <TabsTrigger value="recipe">{isRTL ? 'מתכון' : 'Recipe'}</TabsTrigger>
-          <TabsTrigger value="notes">{isRTL ? 'הערות' : 'Notes'}</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="recipe" className="space-y-8">
-          <div className="mb-8">
-                      <h2
-                          className={
-                              `text-2xl font-semibold text-recipe-orange mb-4 ` +
-                              (isRTL ? 'text-right' : 'text-left')
-                          }
-                      >
-                          {ingredientsLabel}
-                      </h2>
-
-                      <ul
-                          className={
-                              isRTL
-                                  ? "list-disc pr-6 list-inside space-y-2"
-                                  : "list-disc pl-6 list-outside space-y-2"
-                          }
-                      >
-                          {recipe.ingredients.map((ingredient, index) => (
-                              <li key={index} className="text-lg">{ingredient}</li>
-                          ))}
-                      </ul>
-
+      {isInCookMode ? (
+        <div className="cooking-mode">
+          <div className="flex justify-between items-center mb-6">
+            <Button variant="outline" onClick={handleExitCookMode}>
+              {isRTL ? "יציאה ממצב בישול" : "Exit Cooking Mode"}
+            </Button>
+            <div className="text-center flex-grow">
+              <h2 className="text-lg font-medium text-recipe-green">
+                {isRTL ? "מצב בישול" : "Cooking Mode"}
+              </h2>
+              <p className="text-sm text-gray-500">
+                {isRTL 
+                  ? `שלב ${currentStepIndex + 1} מתוך ${recipe.instructions.length}` 
+                  : `Step ${currentStepIndex + 1} of ${recipe.instructions.length}`}
+              </p>
+            </div>
+            <div className="w-10"></div> {/* Placeholder for flex balance */}
           </div>
           
-          <div>
-                      <h2
-                          className={
-                              `text-2xl font-semibold text-recipe-orange mb-4 ` +
-                              (isRTL ? 'text-right' : 'text-left')
-                          }
-                      >
-                          {instructionsLabel}
-                      </h2>
-
-            <ol className={`${isRTL ? 'list-decimal pr-6' : 'list-decimal pl-6'} space-y-4`}>
-              {recipe.instructions.map((instruction, index) => (
-                <li key={index} className="text-lg relative group">
-                  <div className="flex items-start">
-                    <div className="flex-grow">{instruction}</div>
-                    {instruction.toLowerCase().includes('minute') && (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Timer className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>{isRTL ? 'הגדר טיימר לצעד זה' : 'Set Timer for this Step'}</DialogTitle>
-                          </DialogHeader>
-                          <div className="py-4">
-                            <p className="mb-4">{instruction}</p>
-                            <div className="flex justify-end space-x-2">
-                              <Button 
-                                onClick={() => {
-                                  // Extract number from instruction text (e.g., "5 minutes" -> 5)
-                                  const match = instruction.match(/(\d+)(?=\s*(?:minute|min))/i);
-                                  const minutes = match ? parseInt(match[1]) : 5;
-                                  startTimer(minutes, `Step ${index + 1}`);
-                                }}
-                              >
-                                {isRTL ? 'התחל טיימר' : 'Start Timer'}
-                              </Button>
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="notes">
-          <div className="bg-yellow-50 rounded-lg p-6 min-h-[200px]">
-            {isEditingNotes ? (
-              <div className="space-y-4">
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="min-h-[150px] bg-white border-yellow-200"
-                  placeholder={isRTL ? "הערות אישיות שלך למתכון..." : "Your personal notes about this recipe..."}
-                  dir={isRTL ? "rtl" : "ltr"}
-                />
-                <div className={`flex ${isRTL ? "justify-start" : "justify-end"} space-x-2`}>
-                  <Button onClick={() => setIsEditingNotes(false)} variant="outline">
-                    {isRTL ? "ביטול" : "Cancel"}
-                  </Button>
-                  <Button onClick={handleSaveNotes} className="bg-recipe-green hover:bg-recipe-green/90">
-                    <Save className="h-4 w-4 mr-2" />
-                    {isRTL ? "שמור הערות" : "Save Notes"}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className={`text-xl font-semibold ${isRTL ? "text-right" : "text-left"}`}>
-                    {isRTL ? "הערות אישיות" : "Personal Notes"}
-                  </h3>
-                  <Button 
-                    onClick={() => setIsEditingNotes(true)} 
-                    variant="ghost" 
-                    size="sm"
-                    className="text-recipe-green"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    {isRTL ? "ערוך" : "Edit"}
-                  </Button>
-                </div>
-                {notes ? (
-                  <p className={isRTL ? "text-right" : "text-left"}>{notes}</p>
-                ) : (
-                  <p className={`text-gray-500 italic ${isRTL ? "text-right" : "text-left"}`}>
-                    {isRTL 
-                      ? "אין הערות אישיות עדיין. לחץ על 'ערוך' כדי להוסיף הערות."
-                      : "No personal notes yet. Click 'Edit' to add notes."}
-                  </p>
-                )}
+          <motion.div
+            key={`step-${currentStepIndex}`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="bg-recipe-green/5 rounded-lg p-8 mb-6 min-h-[200px] flex flex-col justify-center"
+          >
+            <h3 className="text-xl font-semibold mb-4 text-recipe-green">
+              {isRTL ? `צעד ${currentStepIndex + 1}:` : `Step ${currentStepIndex + 1}:`}
+            </h3>
+            <p className="text-lg leading-relaxed">
+              {recipe.instructions[currentStepIndex]}
+            </p>
+            
+            {recipe.timeMarkers?.find(marker => marker.step === currentStepIndex) && (
+              <div className="mt-4 bg-blue-50 p-4 rounded-lg flex items-center gap-2">
+                <Timer className="h-5 w-5 text-blue-500" />
+                <span className="font-medium">
+                  {isRTL ? "שים לב לזמן:" : "Time needed:"} 
+                  {recipe.timeMarkers.find(marker => marker.step === currentStepIndex)?.duration} 
+                  {isRTL ? " דקות" : " minutes"}
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="ml-auto"
+                  onClick={() => startTimer(
+                    recipe.timeMarkers!.find(marker => marker.step === currentStepIndex)!.duration,
+                    recipe.timeMarkers!.find(marker => marker.step === currentStepIndex)!.description
+                  )}
+                >
+                  {isRTL ? "הפעל טיימר" : "Start Timer"}
+                </Button>
               </div>
             )}
+          </motion.div>
+          
+          <div className="flex justify-between mt-6">
+            <Button 
+              variant="outline" 
+              onClick={handlePrevStep}
+              disabled={currentStepIndex === 0}
+            >
+              {isRTL ? "הקודם" : "Previous"}
+            </Button>
+            
+            <Button 
+              onClick={handleNextStep}
+              className="bg-recipe-green hover:bg-recipe-green/90"
+            >
+              {currentStepIndex < recipe.instructions.length - 1 
+                ? (isRTL ? "הבא" : "Next") 
+                : (isRTL ? "סיים" : "Finish")}
+            </Button>
           </div>
-        </TabsContent>
-      </Tabs>
-      
-      <div className={`mt-8 text-sm text-gray-500 ${isRTL ? 'text-left' : 'text-right'}`}>
-        {isRTL ? 'נוצר:' : 'Created:'} {new Date(recipe.createdAt).toLocaleDateString()}
-      </div>
+          
+          {/* Active timer notification */}
+          {activeTimer && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6 flex items-center justify-between"
+            >
+              <div className="flex items-center">
+                <AlarmClock className="h-5 w-5 text-blue-500 mr-2" />
+                <span className="font-medium">{activeTimer.label}: </span>
+                <span className="ml-2 text-lg font-bold">
+                  {String(activeTimer.minutes).padStart(2, '0')}:{String(activeTimer.seconds).padStart(2, '0')}
+                </span>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setActiveTimer(null)}
+                className="text-blue-600 border-blue-300"
+              >
+                {isRTL ? 'בטל' : 'Cancel'}
+              </Button>
+            </motion.div>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className={`flex ${isRTL ? 'flex-row-reverse' : 'flex-row'} justify-between items-center mb-6 print:hidden`}>
+            <Button
+              variant="ghost"
+              onClick={handleGoToRecipes}
+            >
+              <ArrowLeft className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+              {isRTL ? 'חזרה לכל המתכונים' : 'Back to All Recipes'}
+            </Button>
+            
+            <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} space-x-2`}>
+              <Button
+                variant="outline"
+                onClick={handlePrint}
+                className="text-recipe-green border-recipe-green hover:bg-recipe-green/10"
+              >
+                <Printer className="h-4 w-4 mr-2" />
+                {isRTL ? 'הדפסה' : 'Print'}
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={handleExportPdf}
+                className="text-recipe-orange border-recipe-orange hover:bg-recipe-orange/10"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isRTL ? 'ייצוא ל-PDF' : 'Export PDF'}
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={generateShoppingList}
+                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+              >
+                <ShoppingBag className="h-4 w-4 mr-2" />
+                {isRTL ? 'רשימת קניות' : 'Shopping List'}
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={handleStartCooking}
+                className="text-purple-600 border-purple-600 hover:bg-purple-50 animate-pulse"
+              >
+                <PlayCircle className="h-4 w-4 mr-2" />
+                {isRTL ? 'התחל לבשל' : 'Start Cooking'}
+              </Button>
+              
+              <Dialog open={isTimerOpen} onOpenChange={setIsTimerOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="text-purple-600 border-purple-600 hover:bg-purple-50"
+                  >
+                    <Timer className="h-4 w-4 mr-2" />
+                    {isRTL ? 'טיימר' : 'Timer'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{isRTL ? 'הגדר טיימר למתכון' : 'Set Recipe Timer'}</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button onClick={() => startTimer(5, '5 minutes')} variant="outline">5 {isRTL ? 'דקות' : 'minutes'}</Button>
+                      <Button onClick={() => startTimer(10, '10 minutes')} variant="outline">10 {isRTL ? 'דקות' : 'minutes'}</Button>
+                      <Button onClick={() => startTimer(15, '15 minutes')} variant="outline">15 {isRTL ? 'דקות' : 'minutes'}</Button>
+                      <Button onClick={() => startTimer(30, '30 minutes')} variant="outline">30 {isRTL ? 'דקות' : 'minutes'}</Button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        value={customMinutes}
+                        onChange={(e) => setCustomMinutes(e.target.value)}
+                        placeholder={isRTL ? 'דקות מותאמות אישית' : 'Custom minutes'}
+                        min="1"
+                        max="999"
+                      />
+                      <Button onClick={startCustomTimer}>{isRTL ? 'התחל' : 'Start'}</Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+          
+          <div className="flex justify-between items-center mb-4">
+            <h1 className={`text-3xl font-bold text-recipe-green ${isRTL ? 'text-right mr-2' : 'text-left ml-2'}`}>
+              {recipe.name}
+            </h1>
+            
+            <div className="flex items-center space-x-4">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleToggleFavorite}
+                className="text-gray-400 hover:text-red-500 transition-colors focus:outline-none"
+                aria-label={recipe.isFavorite ? "Remove from favorites" : "Add to favorites"}
+              >
+                <Heart className={`h-6 w-6 ${recipe.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
+              </motion.button>
+              
+              <div className="flex">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => handleRate(star)}
+                    className="focus:outline-none"
+                  >
+                    <Star 
+                      className={`h-6 w-6 ${recipe.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} 
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          {/* Recipe metadata */}
+          <div className={`flex flex-wrap gap-2 mb-6 ${isRTL ? 'justify-end' : 'justify-start'}`}>
+            {recipe.difficulty && (
+              <Badge variant="outline" className={`${getDifficultyColor(recipe.difficulty)} flex items-center gap-1 px-3 py-1`}>
+                <FileText className="h-3 w-3" />
+                {recipe.difficulty}
+              </Badge>
+            )}
+            
+            {recipe.estimatedTime && (
+              <Badge variant="outline" className="bg-blue-100 text-blue-800 flex items-center gap-1 px-3 py-1">
+                <Clock className="h-3 w-3" />
+                {recipe.estimatedTime}
+              </Badge>
+            )}
+            
+            {recipe.calories && (
+              <Badge variant="outline" className="bg-orange-100 text-orange-800 flex items-center gap-1 px-3 py-1">
+                <FileText className="h-3 w-3" />
+                {recipe.calories}
+              </Badge>
+            )}
+            
+            {recipe.tags && recipe.tags.map((tag, idx) => (
+              <Badge key={idx} variant="outline" className="bg-purple-100 text-purple-800 flex items-center gap-1 px-3 py-1">
+                <Tag className="h-3 w-3" />
+                {tag}
+              </Badge>
+            ))}
+          </div>
+          
+          {/* Active timer notification */}
+          {activeTimer && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center justify-between"
+            >
+              <div className="flex items-center">
+                <AlarmClock className="h-5 w-5 text-blue-500 mr-2" />
+                <span className="font-medium">{activeTimer.label}: </span>
+                <span className="ml-2 text-lg font-bold">
+                  {String(activeTimer.minutes).padStart(2, '0')}:{String(activeTimer.seconds).padStart(2, '0')}
+                </span>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setActiveTimer(null)}
+                className="text-blue-600 border-blue-300"
+              >
+                {isRTL ? 'בטל' : 'Cancel'}
+              </Button>
+            </motion.div>
+          )}
+          
+          <Tabs defaultValue="recipe" className="mt-6">
+            <TabsList className="mb-4">
+              <TabsTrigger value="recipe">{isRTL ? 'מתכון' : 'Recipe'}</TabsTrigger>
+              <TabsTrigger value="notes">{isRTL ? 'הערות' : 'Notes'}</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="recipe" className="space-y-8">
+              <div className="mb-8">
+                <h2
+                    className={
+                        `text-2xl font-semibold text-recipe-orange mb-4 ` +
+                        (isRTL ? 'text-right' : 'text-left')
+                    }
+                >
+                    {ingredientsLabel}
+                </h2>
+
+                <ul
+                    className={
+                        isRTL
+                            ? "list-disc list-inside space-y-2 pr-5"
+                            : "list-disc list-outside space-y-2 pl-5"
+                    }
+                >
+                    {recipe.ingredients.map((ingredient, index) => (
+                        <li key={index} className="text-lg">{ingredient}</li>
+                    ))}
+                </ul>
+              </div>
+              
+              <div>
+                <h2
+                    className={
+                        `text-2xl font-semibold text-recipe-orange mb-4 ` +
+                        (isRTL ? 'text-right' : 'text-left')
+                    }
+                >
+                    {instructionsLabel}
+                </h2>
+
+                <ol className={`${isRTL ? 'list-decimal pr-5' : 'list-decimal pl-5'} space-y-4`}>
+                  {recipe.instructions.map((instruction, index) => (
+                    <li key={index} className="text-lg relative group">
+                      <div className="flex items-start">
+                        <div className="flex-grow">{instruction}</div>
+                        {instruction.toLowerCase().includes('minute') && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Timer className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>{isRTL ? 'הגדר טיימר לצעד זה' : 'Set Timer for this Step'}</DialogTitle>
+                              </DialogHeader>
+                              <div className="py-4">
+                                <p className="mb-4">{instruction}</p>
+                                <div className="flex justify-end space-x-2">
+                                  <Button 
+                                    onClick={() => {
+                                      // Extract number from instruction text (e.g., "5 minutes" -> 5)
+                                      const match = instruction.match(/(\d+)(?=\s*(?:minute|min))/i);
+                                      const minutes = match ? parseInt(match[1]) : 5;
+                                      startTimer(minutes, `Step ${index + 1}`);
+                                    }}
+                                  >
+                                    {isRTL ? 'התחל טיימר' : 'Start Timer'}
+                                  </Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="notes">
+              <div className="bg-yellow-50 rounded-lg p-6 min-h-[200px]">
+                {isEditingNotes ? (
+                  <div className="space-y-4">
+                    <Textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="min-h-[150px] bg-white border-yellow-200"
+                      placeholder={isRTL ? "הערות אישיות שלך למתכון..." : "Your personal notes about this recipe..."}
+                      dir={isRTL ? "rtl" : "ltr"}
+                    />
+                    <div className={`flex ${isRTL ? "justify-start" : "justify-end"} space-x-2`}>
+                      <Button onClick={() => setIsEditingNotes(false)} variant="outline">
+                        {isRTL ? "ביטול" : "Cancel"}
+                      </Button>
+                      <Button onClick={handleSaveNotes} className="bg-recipe-green hover:bg-recipe-green/90">
+                        <Save className="h-4 w-4 mr-2" />
+                        {isRTL ? "שמור הערות" : "Save Notes"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className={`text-xl font-semibold ${isRTL ? "text-right" : "text-left"}`}>
+                        {isRTL ? "הערות אישיות" : "Personal Notes"}
+                      </h3>
+                      <Button 
+                        onClick={() => setIsEditingNotes(true)} 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-recipe-green"
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        {isRTL ? "ערוך" : "Edit"}
+                      </Button>
+                    </div>
+                    {notes ? (
+                      <p className={isRTL ? "text-right" : "text-left"}>{notes}</p>
+                    ) : (
+                      <p className={`text-gray-500 italic ${isRTL ? "text-right" : "text-left"}`}>
+                        {isRTL 
+                          ? "אין הערות אישיות עדיין. לחץ על 'ערוך' כדי להוסיף הערות."
+                          : "No personal notes yet. Click 'Edit' to add notes."}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+          
+          <div className={`mt-8 text-sm text-gray-500 ${isRTL ? 'text-left' : 'text-right'}`}>
+            {isRTL ? 'נוצר:' : 'Created:'} {new Date(recipe.createdAt).toLocaleDateString()}
+          </div>
+        </>
+      )}
     </motion.div>
   );
 };
