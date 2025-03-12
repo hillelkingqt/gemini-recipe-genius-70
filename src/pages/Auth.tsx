@@ -54,31 +54,37 @@ const Auth: React.FC = () => {
     }
   }, [user, isLoading, navigate]);
 
-  const clearChatCache = () => {
+const clearChatCache = () => {
   localStorage.removeItem('chat_messages');
   localStorage.removeItem('current_recipe');
 };
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in all fields',
-        variant: 'destructive',
-      });
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-await signIn(email, password);
-clearChatCache(); // 🧼 מנקה את הצ'אט
-    } catch (error) {
-      console.error('Sign in error:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+const handleSignIn = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!email || !password) {
+    toast({
+      title: "Error",
+      description: "Please fill in all fields",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsSubmitting(true);
+  try {
+    await signIn(email, password);
+
+    // ✅ מנקה את ה־localStorage של הצ'אט אחרי התחברות
+    clearChatCache();
+
+  } catch (error) {
+    console.error("Sign in error:", error);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
