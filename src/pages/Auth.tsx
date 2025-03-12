@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -95,18 +94,21 @@ const Auth: React.FC = () => {
     try {
       await signUp(newEmail, newPassword, username);
       setShowSuccessMessage(true);
+      // העתקת הערכים לתיבות ההתחברות
+      setEmail(newEmail);
+      setPassword(newPassword);
       
-      // Reset form after successful signup
+      // אפס את שדות ההרשמה
       setNewEmail('');
       setNewPassword('');
       setConfirmPassword('');
       setUsername('');
       
-      // Automatically switch to sign in tab after 3 seconds
+      // לאחר 5 שניות, הסתר את הודעת ההצלחה והעביר לטאב Sign In
       setTimeout(() => {
         setShowSuccessMessage(false);
         setActiveTab('signin');
-      }, 3000);
+      }, 5000);
     } catch (error) {
       console.error("Sign up error:", error);
     } finally {
@@ -196,7 +198,7 @@ const Auth: React.FC = () => {
                     <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
                     <h3 className="text-xl font-semibold text-green-700 dark:text-green-300">Account Created!</h3>
                     <p className="text-green-600 dark:text-green-400">
-                      Your account has been successfully created. Please check your email to confirm your registration.
+                      Your account has been created. Please check your email to confirm your registration.
                     </p>
                     <p className="text-sm text-green-500 dark:text-green-500">
                       Redirecting to sign in...
