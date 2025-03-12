@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Moon, Sun } from 'lucide-react';
 import {
   CookingPot,
