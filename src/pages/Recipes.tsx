@@ -8,13 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, X, ArrowLeft, CookingPot, Filter, SlidersHorizontal, Heart } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { Recipe } from '@/types/Recipe';
 import { useToast } from '@/components/ui/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Recipes: React.FC = () => {
+  const location = useLocation();
   const { recipes, removeRecipe, toggleFavorite, rateRecipe, addNote } = useRecipes();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
@@ -25,22 +26,23 @@ const Recipes: React.FC = () => {
   const { toast } = useToast();
   
   // Get recipe ID from URL if present
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const recipeId = urlParams.get('id');
-    if (recipeId) {
-      setSelectedRecipeId(recipeId);
-    }
-  }, []);
+// Get recipe ID from URL if present, update on location change
+useEffect(() => {
+  const urlParams = new URLSearchParams(location.search);
+  const recipeId = urlParams.get('id');
+  setSelectedRecipeId(recipeId);
+}, [location.search]);
+
   
   // Update URL when a recipe is selected
-  useEffect(() => {
-    if (selectedRecipeId) {
-      window.history.pushState({}, '', `?id=${selectedRecipeId}`);
-    } else {
-      window.history.pushState({}, '', window.location.pathname);
-    }
-  }, [selectedRecipeId]);
+useEffect(() => {
+  if (selectedRecipeId) {
+    navigate(`/recipes?id=${selectedRecipeId}`, { replace: true });
+  } else {
+    navigate('/recipes', { replace: true });
+  }
+}, [selectedRecipeId, navigate]);
+
   
   const handleDeleteRecipe = (id: string) => {
     removeRecipe(id);
