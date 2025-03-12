@@ -55,6 +55,7 @@ const Auth: React.FC = () => {
   }, [user, isLoading, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
+    localStorage.clear();
     e.preventDefault();
     if (!email || !password) {
       toast({
