@@ -8,11 +8,18 @@ import { useToast } from '@/components/ui/use-toast';
 import RecipeCard from './RecipeCard';
 import { motion, AnimatePresence } from 'framer-motion';
 
+interface QuickReply {
+  text: string;
+  action: string;
+  emoji?: string;
+}
+
 interface Message {
   id: string;
   text: string;
   sender: 'user' | 'ai';
   isRTL?: boolean;
+  quickReplies?: QuickReply[];
 }
 
 interface ChatInterfaceProps {
@@ -34,16 +41,42 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const [persistedMessages, setPersistedMessages] = useState<Message[]>([]);
   
   useEffect(() => {
-    setMessages([
-      {
-        id: '1',
-        text: "Hello! I'm your Recipe Assistant. Tell me what kind of recipe you're looking for, and I'll create it for you. For example, try: 'I want a simple pasta recipe with mushrooms and garlic'.",
-        sender: 'ai'
-      }
-    ]);
+    const savedMessages = localStorage.getItem('chat_messages');
+    const savedRecipe = localStorage.getItem('current_recipe');
+    
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    } else {
+      setMessages([
+        {
+          id: '1',
+          text: "Hello! I'm your Recipe Assistant. Tell me what kind of recipe you're looking for, and I'll create it for you. For example, try: 'I want a simple pasta recipe with mushrooms and garlic'.",
+          sender: 'ai'
+        }
+      ]);
+    }
+    
+    if (savedRecipe) {
+      setGeneratedRecipe(JSON.parse(savedRecipe));
+    }
   }, []);
+  
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('chat_messages', JSON.stringify(messages));
+    }
+    if (generatedRecipe) {
+      localStorage.setItem('current_recipe', JSON.stringify(generatedRecipe));
+    }
+  }, [messages, generatedRecipe]);
+
+  const clearPersistedChat = () => {
+    localStorage.removeItem('chat_messages');
+    localStorage.removeItem('current_recipe');
+  };
   
   const handleSendMessage = async () => {
     if (!input.trim()) return;
@@ -62,6 +95,54 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const recipe = await geminiService.generateRecipe({
         prompt: input,
         language: detectLanguage(input)
+      });
+      
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: recipe.isRecipe 
+          ? `I've created a recipe for "${recipe.name}" based on your request.`
+          : recipe.content || "I can only help with recipes and food-related questions.",
+        sender: 'ai',
+        isRTL: recipe.isRTL
+      };
+      setMessages(prev => [...prev, aiMessage]);
+      
+      if (recipe.isRecipe) {
+        setGeneratedRecipe(recipe);
+      }
+    } catch (error) {
+      console.error('Error generating recipe:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "I'm sorry, I couldn't generate a recipe. Please try again with a different request.",
+        sender: 'ai'
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      
+      toast({
+        variant: "destructive",
+        title: "Recipe Generation Failed",
+        description: "There was an error generating your recipe. Please try again."
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleQuickReply = async (reply: QuickReply) => {
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: reply.text,
+      sender: 'user'
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+    
+    try {
+      const recipe = await geminiService.generateRecipe({
+        prompt: reply.text,
+        language: detectLanguage(reply.text)
       });
       
       const aiMessage: Message = {
@@ -152,6 +233,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (generatedRecipe) {
       onRecipeGenerated(generatedRecipe);
       setGeneratedRecipe(null);
+      clearPersistedChat();
       
       const confirmationMessage: Message = {
         id: Date.now().toString(),
@@ -166,6 +248,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (generatedRecipe) {
       onRecipeRejected(generatedRecipe);
       setGeneratedRecipe(null);
+      clearPersistedChat();
       
       const message: Message = {
         id: Date.now().toString(),
@@ -200,7 +283,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 transition={{ duration: 0.3 }}
               >
                 <div 
-                  className={`message-bubble ${message.sender === 'user' ? 'bg-recipe-green/10 text-black' : 'bg-gray-100 text-black'} ${message.isRTL ? 'rtl text-right' : 'ltr text-left'}`}
+                  className={`message-bubble ${
+                    message.sender === 'user' 
+                      ? 'bg-recipe-green/10 text-black dark:text-white dark:bg-recipe-green/20' 
+                      : 'bg-gray-100 text-black dark:bg-gray-800 dark:text-white'
+                  } ${message.isRTL ? 'rtl text-right' : 'ltr text-left'}`}
                   style={{ 
                     maxWidth: '80%', 
                     borderRadius: '18px', 
@@ -209,6 +296,26 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   }}
                 >
                   {message.text}
+                  {message.sender === 'ai' && message.quickReplies && message.quickReplies.length > 0 && (
+                    <motion.div 
+                      className="flex flex-wrap gap-2 mt-3"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      {message.quickReplies.map((reply, index) => (
+                        <Button
+                          key={index}
+                          onClick={() => handleQuickReply(reply)}
+                          variant="outline"
+                          className="text-sm bg-white/50 dark:bg-gray-700/50 hover:bg-white/80 dark:hover:bg-gray-700/80 transition-colors"
+                        >
+                          {reply.emoji && <span className="mr-1">{reply.emoji}</span>}
+                          {reply.text}
+                        </Button>
+                      ))}
+                    </motion.div>
+                  )}
                 </div>
               </motion.div>
             ))}

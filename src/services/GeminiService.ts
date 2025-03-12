@@ -1,4 +1,3 @@
-
 import { RecipeRequest, RecipeResponse } from "../types/Recipe";
 
 const GOOGLE_API_KEY = "AIzaSyA2KjqBCn4oT8s5s6WUB1VOVfVO_eI4rXA";
@@ -80,6 +79,9 @@ Please provide:
 - Cuisine type
 - Seasonal recommendations if applicable
 - Servings information
+- Quick reply suggestions for recipe variations (e.g., "Make it vegetarian", "Make it spicier", "Healthier version")
+
+IMPORTANT: For quick replies, include 2-3 relevant suggestions based on the recipe, such as dietary modifications or flavor variations.
 
 IMPORTANT FORMATTING GUIDELINES:
 1. DO NOT use category labels like "For the dough:" or "For the sauce:" before ingredients. List all ingredients directly.
@@ -120,7 +122,14 @@ Respond ONLY with a complete, valid JSON object using this exact structure, noth
     "fat": "10g"
   },
   "seasonality": ["Spring", "Summer"],
-  "cuisine": "Mediterranean"
+  "cuisine": "Mediterranean",
+  "quickReplies": [
+    {
+      "text": "Make it vegetarian",
+      "action": "modify_vegetarian",
+      "emoji": "🥬"
+    }
+  ]
 }
 
 For the "timeMarkers" field, identify any steps that require waiting or timed cooking (like "bake for 20 minutes" or "let rise for 1 hour"). Extract these times and create timeMarker objects with:
@@ -211,6 +220,9 @@ The JSON must be valid and parseable.`;
         const ingredientsLabel = parsedResult.ingredientsLabel || (isRTL ? 'מצרכים' : 'Ingredients');
         const instructionsLabel = parsedResult.instructionsLabel || (isRTL ? 'אופן ההכנה' : 'Instructions');
         
+        // Add quick replies to the response message
+        const quickReplies = parsedResult.quickReplies || [];
+        
         return {
           name: parsedResult.name,
           ingredients: cleanedIngredients,
@@ -230,7 +242,8 @@ The JSON must be valid and parseable.`;
           servings: parsedResult.servings || 4,
           nutritionInfo: parsedResult.nutritionInfo || {},
           seasonality: parsedResult.seasonality || [],
-          cuisine: parsedResult.cuisine || ''
+          cuisine: parsedResult.cuisine || '',
+          quickReplies
         };
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
@@ -310,7 +323,14 @@ Respond ONLY with a valid JSON object that has the following structure:
     "fat": "10g"
   },
   "seasonality": ["Spring", "Summer"],
-  "cuisine": "Mediterranean"
+  "cuisine": "Mediterranean",
+  "quickReplies": [
+    {
+      "text": "Make it vegetarian",
+      "action": "modify_vegetarian",
+      "emoji": "🥬"
+    }
+  ]
 }
 
 The recipe should be detailed and professional.

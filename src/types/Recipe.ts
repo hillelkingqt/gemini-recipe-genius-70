@@ -1,45 +1,55 @@
+export interface CulinaryTerm {
+  term: string;
+  definition: string;
+  category: string;
+  examples?: string[];
+}
 
-export interface Recipe {
-  id: string;
-  name: string;
-  ingredients: string[];
-  instructions: string[];
-  createdAt: Date;
-  isRTL?: boolean;
-  ingredientsLabel?: string;
-  instructionsLabel?: string;
-  isRecipe?: boolean;
-  content?: string;
-  isFavorite?: boolean;
-  tags?: string[];
-  difficulty?: 'easy' | 'medium' | 'hard';
-  estimatedTime?: string;
-  calories?: string;
-  notes?: string;
-  rating?: number;
-  status?: 'draft' | 'accepted' | 'rejected';
-  servings?: number;
-  prepTime?: string;
-  cookTime?: string;
-  totalTime?: string;
-  nutritionInfo?: {
-    calories?: string;
-    protein?: string;
-    carbs?: string;
-    fat?: string;
+export interface MeasurementConversion {
+  from: string;
+  to: string;
+  ratio: number;
+  ingredient?: string;
+}
+
+export interface UserStatistics {
+  requestedRecipes: number;
+  completedRecipes: number;
+  favoriteRecipes: string[];
+  mostCooked: {
+    recipeId: string;
+    count: number;
+  }[];
+  lastSession?: {
+    route: string;
+    scroll: number;
+    timestamp: Date;
   };
-  seasonality?: string[];
-  cuisine?: string;
-  timeMarkers?: {
-    step: number;
-    duration: number;
-    description: string;
+}
+
+export interface CookingTip {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  tags: string[];
+  createdAt: Date;
+  emoji?: string;
+}
+
+export interface MealPlan {
+  date: Date;
+  meals: {
+    type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+    recipeId?: string;
+    notes?: string;
   }[];
 }
 
-export interface RecipeRequest {
-  prompt: string;
-  language?: string;
+export interface QuickReply {
+  text: string;
+  action: string;
+  emoji?: string;
 }
 
 export interface RecipeResponse {
@@ -72,4 +82,5 @@ export interface RecipeResponse {
   };
   seasonality?: string[];
   cuisine?: string;
+  quickReplies?: QuickReply[];
 }
