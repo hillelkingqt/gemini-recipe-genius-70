@@ -54,11 +54,6 @@ const Auth: React.FC = () => {
     }
   }, [user, isLoading, navigate]);
 
-  const clearChatCache = () => {
-  localStorage.removeItem('chat_messages');
-  localStorage.removeItem('current_recipe');
-};
-
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -71,8 +66,7 @@ const Auth: React.FC = () => {
     }
     setIsSubmitting(true);
     try {
-await signIn(email, password);
-clearChatCache(); // 🧼 מנקה את הצ'אט
+      await signIn(email, password);
     } catch (error) {
       console.error('Sign in error:', error);
     } finally {
