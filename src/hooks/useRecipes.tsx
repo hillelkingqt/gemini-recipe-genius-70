@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Recipe, RecipeResponse } from '@/types/Recipe';
 import { toast } from '@/hooks/use-toast';
@@ -29,12 +28,12 @@ export function useRecipes() {
         const recipesWithDates = data.map((recipe: any) => ({
           ...recipe,
           createdAt: new Date(recipe.created_at),
-          ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : JSON.parse(recipe.ingredients),
-          instructions: Array.isArray(recipe.instructions) ? recipe.instructions : JSON.parse(recipe.instructions),
-          tags: recipe.tags ? (Array.isArray(recipe.tags) ? recipe.tags : JSON.parse(recipe.tags)) : [],
-          timeMarkers: recipe.time_markers ? (Array.isArray(recipe.time_markers) ? recipe.time_markers : JSON.parse(recipe.time_markers)) : [],
-          nutritionInfo: recipe.nutrition_info ? (typeof recipe.nutrition_info === 'object' ? recipe.nutrition_info : JSON.parse(recipe.nutrition_info)) : {},
-          seasonality: recipe.seasonality ? (Array.isArray(recipe.seasonality) ? recipe.seasonality : JSON.parse(recipe.seasonality)) : [],
+          ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : JSON.parse(String(recipe.ingredients)),
+          instructions: Array.isArray(recipe.instructions) ? recipe.instructions : JSON.parse(String(recipe.instructions)),
+          tags: recipe.tags ? (Array.isArray(recipe.tags) ? recipe.tags : JSON.parse(String(recipe.tags))) : [],
+          timeMarkers: recipe.time_markers ? (Array.isArray(recipe.time_markers) ? recipe.time_markers : JSON.parse(String(recipe.time_markers))) : [],
+          nutritionInfo: recipe.nutrition_info ? (typeof recipe.nutrition_info === 'object' ? recipe.nutrition_info : JSON.parse(String(recipe.nutrition_info))) : {},
+          seasonality: recipe.seasonality ? (Array.isArray(recipe.seasonality) ? recipe.seasonality : JSON.parse(String(recipe.seasonality))) : [],
           isFavorite: recipe.is_favorite,
           isRTL: recipe.is_rtl,
           isRecipe: recipe.is_recipe,
@@ -59,14 +58,14 @@ export function useRecipes() {
     fetchRecipes();
   }, [user]);
   
-  const addRecipe = async (recipeResponse: RecipeResponse, status: 'draft' | 'accepted' | 'rejected' = 'accepted') => {
+  const addRecipe = async (recipeResponse: RecipeResponse, status: 'draft' | 'accepted' | 'rejected' = 'accepted'): Promise<Recipe> => {
     if (!user) {
       toast({
         title: "Authentication required",
         description: "Please sign in to save recipes",
         variant: "destructive",
       });
-      return null;
+      throw new Error("User not authenticated");
     }
     
     try {
@@ -113,8 +112,8 @@ export function useRecipes() {
       const newRecipe: Recipe = {
         id: data.id,
         name: data.name,
-        ingredients: Array.isArray(data.ingredients) ? data.ingredients : JSON.parse(data.ingredients),
-        instructions: Array.isArray(data.instructions) ? data.instructions : JSON.parse(data.instructions),
+        ingredients: Array.isArray(data.ingredients) ? data.ingredients : JSON.parse(String(data.ingredients)),
+        instructions: Array.isArray(data.instructions) ? data.instructions : JSON.parse(String(data.instructions)),
         createdAt: new Date(data.created_at),
         isRTL: data.is_rtl,
         ingredientsLabel: data.ingredients_label,
@@ -122,20 +121,20 @@ export function useRecipes() {
         isRecipe: data.is_recipe,
         content: data.content,
         isFavorite: data.is_favorite,
-        tags: data.tags ? (Array.isArray(data.tags) ? data.tags : JSON.parse(data.tags)) : [],
+        tags: data.tags ? (Array.isArray(data.tags) ? data.tags : JSON.parse(String(data.tags))) : [],
         difficulty: data.difficulty as 'easy' | 'medium' | 'hard',
         estimatedTime: data.estimated_time,
         calories: data.calories,
         notes: data.notes || '',
         rating: data.rating,
         status: data.status as 'draft' | 'accepted' | 'rejected',
-        timeMarkers: data.time_markers ? (Array.isArray(data.time_markers) ? data.time_markers : JSON.parse(data.time_markers)) : [],
+        timeMarkers: data.time_markers ? (Array.isArray(data.time_markers) ? data.time_markers : JSON.parse(String(data.time_markers))) : [],
         prepTime: data.prep_time,
         cookTime: data.cook_time,
         totalTime: data.total_time,
         servings: data.servings,
-        nutritionInfo: data.nutrition_info ? (typeof data.nutrition_info === 'object' ? data.nutrition_info : JSON.parse(data.nutrition_info)) : {},
-        seasonality: data.seasonality ? (Array.isArray(data.seasonality) ? data.seasonality : JSON.parse(data.seasonality)) : [],
+        nutritionInfo: data.nutrition_info ? (typeof data.nutrition_info === 'object' ? data.nutrition_info : JSON.parse(String(data.nutrition_info))) : {},
+        seasonality: data.seasonality ? (Array.isArray(data.seasonality) ? data.seasonality : JSON.parse(String(data.seasonality))) : [],
         cuisine: data.cuisine
       };
       
@@ -161,7 +160,7 @@ export function useRecipes() {
         variant: "destructive",
       });
       
-      return null;
+      throw error;
     }
   };
   

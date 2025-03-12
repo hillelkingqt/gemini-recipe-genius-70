@@ -30,17 +30,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const getInitialSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        console.log("Initial session:", session);
         setSession(session);
         setUser(session?.user || null);
         
         if (session?.user) {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
           
-          setProfile(data);
+          if (error) {
+            console.error("Error fetching profile:", error);
+          } else {
+            console.log("User profile loaded:", data);
+            setProfile(data);
+          }
         }
       } catch (error) {
         console.error('Error getting initial session:', error);
@@ -54,18 +60,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event);
+        console.log('Auth state changed:', event, session);
         setSession(session);
         setUser(session?.user || null);
         
         if (session?.user) {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
           
-          setProfile(data);
+          if (error) {
+            console.error("Error fetching profile on auth change:", error);
+          } else {
+            console.log("User profile updated:", data);
+            setProfile(data);
+          }
         } else {
           setProfile(null);
         }
@@ -82,12 +93,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log("Attempting sign in:", email);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       
       if (error) {
+        console.error("Supabase sign in error:", error);
         throw error;
       }
       
+      console.log("Sign in successful:", data);
       toast({
         title: "Welcome back!",
         description: "You have successfully signed in.",
@@ -95,12 +109,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       navigate('/');
     } catch (error: any) {
+      console.error('Detailed sign in error:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = "An error occurred during sign in";
+      
+      if (error?.message === "Email not confirmed") {
+        errorMessage = "Please confirm your email address before signing in";
+      } else if (error?.message === "Invalid login credentials") {
+        errorMessage = "Incorrect email or password";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Sign in failed",
-        description: error?.message || "An error occurred during sign in",
+        description: errorMessage,
         variant: "destructive",
       });
-      console.error('Error signing in:', error);
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +135,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signUp = async (email: string, password: string, username: string) => {
     try {
       setIsLoading(true);
-      const { error: signUpError } = await supabase.auth.signUp({ 
+      console.log("Attempting sign up:", email, username);
+      
+      const { data, error } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
@@ -119,23 +147,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
       });
       
-      if (signUpError) {
-        throw signUpError;
+      if (error) {
+        console.error("Supabase sign up error:", error);
+        throw error;
+      }
+      
+      console.log("Sign up result:", data);
+      
+      if (data.user) {
+        // Check if email confirmation is needed
+        if (data.user.identities && data.user.identities.length === 0) {
+          throw new Error("Email already registered");
+        }
+        
+        if (data.user.confirmation_sent_at) {
+          toast({
+            title: "Account created",
+            description: "Your account has been created. Please check your email to confirm your registration.",
+          });
+        } else {
+          toast({
+            title: "Account created",
+            description: "Your account has been successfully created. You can now sign in.",
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error('Detailed sign up error:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = "An error occurred during registration";
+      
+      if (error?.message?.includes("already registered")) {
+        errorMessage = "This email is already registered";
+      } else if (error?.message) {
+        errorMessage = error.message;
       }
       
       toast({
-        title: "Account created",
-        description: "Your account has been successfully created. You can now sign in.",
-      });
-      
-      navigate('/auth', { state: { mode: 'signin' } });
-    } catch (error: any) {
-      toast({
         title: "Sign up failed",
-        description: error?.message || "An error occurred during registration",
+        description: errorMessage,
         variant: "destructive",
       });
-      console.error('Error signing up:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }

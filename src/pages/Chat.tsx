@@ -13,11 +13,11 @@ const Chat: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleRecipeGenerated = (recipe: RecipeResponse) => {
+  const handleRecipeGenerated = async (recipe: RecipeResponse) => {
     try {
       // Accept or save as draft based on recipe quality
       const status = recipe.isRecipe ? 'accepted' : 'draft';
-      const newRecipe = addRecipe(recipe, status);
+      const newRecipe = await addRecipe(recipe, status);
       
       toast({
         title: "Recipe Saved!",
@@ -38,10 +38,10 @@ const Chat: React.FC = () => {
     }
   };
 
-  const handleRecipeRejected = (recipe: RecipeResponse) => {
+  const handleRecipeRejected = async (recipe: RecipeResponse) => {
     try {
       // Save rejected recipe with rejected status
-      const newRecipe = addRecipe(recipe, 'rejected');
+      await addRecipe(recipe, 'rejected');
       
       toast({
         variant: "default",
