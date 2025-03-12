@@ -46,4 +46,3 @@ export interface MealPlan {
     notes?: string;
   }[];
 }
-
