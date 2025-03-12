@@ -17,9 +17,13 @@ interface Message {
 
 interface ChatInterfaceProps {
   onRecipeGenerated: (recipe: RecipeResponse) => void;
+  onRecipeRejected: (recipe: RecipeResponse) => void;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
+  onRecipeGenerated,
+  onRecipeRejected
+}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -31,21 +35,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
   const editFormRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
-  // Auto-scroll to bottom of messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-  
-  // Auto-scroll to edit form when it appears
-  useEffect(() => {
-    if (isEditing) {
-      setTimeout(() => {
-        editFormRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    }
-  }, [isEditing]);
-  
-  // Initial greeting message
   useEffect(() => {
     setMessages([
       {
@@ -59,7 +48,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
   const handleSendMessage = async () => {
     if (!input.trim()) return;
     
-    // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
       text: input,
@@ -71,13 +59,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
     setIsLoading(true);
     
     try {
-      // Generate recipe response
       const recipe = await geminiService.generateRecipe({
         prompt: input,
         language: detectLanguage(input)
       });
       
-      // Add AI message
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: recipe.isRecipe 
@@ -88,13 +74,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
       };
       setMessages(prev => [...prev, aiMessage]);
       
-      // Set the generated recipe if it's a recipe
       if (recipe.isRecipe) {
         setGeneratedRecipe(recipe);
       }
     } catch (error) {
       console.error('Error generating recipe:', error);
-      // Add error message
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: "I'm sorry, I couldn't generate a recipe. Please try again with a different request.",
@@ -118,7 +102,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
     setIsEditingInProgress(true);
     
     try {
-      // Add user message
       const userMessage: Message = {
         id: Date.now().toString(),
         text: `Can you modify the recipe? ${editRequest}`,
@@ -127,14 +110,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
       };
       setMessages(prev => [...prev, userMessage]);
       
-      // Call API to edit recipe
       const updatedRecipe = await geminiService.editRecipe(
         generatedRecipe, 
         editRequest,
         detectLanguage(editRequest)
       );
       
-      // Add AI message
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: `I've updated the recipe for "${updatedRecipe.name}" based on your request.`,
@@ -143,14 +124,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
       };
       setMessages(prev => [...prev, aiMessage]);
       
-      // Update the generated recipe
       setGeneratedRecipe(updatedRecipe);
       setEditRequest('');
       
     } catch (error) {
       console.error('Error editing recipe:', error);
       
-      // Add error message
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: "I'm sorry, I couldn't edit the recipe. Please try a different edit request.",
@@ -174,7 +153,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
       onRecipeGenerated(generatedRecipe);
       setGeneratedRecipe(null);
       
-      // Add confirmation message
       const confirmationMessage: Message = {
         id: Date.now().toString(),
         text: "Great! I've saved this recipe to your collection. What would you like to cook next?",
@@ -185,18 +163,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onRecipeGenerated }) => {
   };
   
   const handleRejectRecipe = () => {
-    setGeneratedRecipe(null);
-    
-    // Add message
-    const message: Message = {
-      id: Date.now().toString(),
-      text: "No problem. Let's try something else! What kind of recipe would you like instead?",
-      sender: 'ai'
-    };
-    setMessages(prev => [...prev, message]);
+    if (generatedRecipe) {
+      onRecipeRejected(generatedRecipe);
+      setGeneratedRecipe(null);
+      
+      const message: Message = {
+        id: Date.now().toString(),
+        text: "No problem. Let's try something else! What kind of recipe would you like instead?",
+        sender: 'ai'
+      };
+      setMessages(prev => [...prev, message]);
+    }
   };
   
-  // Helper function to detect language (very simple implementation)
   const detectLanguage = (text: string): string => {
     const hebrewPattern = /[\u0590-\u05FF]/;
     return hebrewPattern.test(text) ? 'he' : 'en';

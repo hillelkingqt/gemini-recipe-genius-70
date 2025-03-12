@@ -175,9 +175,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
   };
   
   const handleGoToRecipes = () => {
-    // Force a page reload when navigating to recipes
     navigate('/recipes');
-    window.location.href = '/recipes';
   };
   
   return (

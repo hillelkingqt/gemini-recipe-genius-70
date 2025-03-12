@@ -354,3 +354,154 @@
 .step-indicator-line.completed {
   @apply bg-recipe-green;
 }
+
+/* Blur effect for cards */
+.frosted-glass {
+  @apply backdrop-blur-sm bg-white/80 border border-white/20 shadow-lg;
+}
+
+/* Elegant recipe card */
+.elegant-card {
+  @apply rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300;
+  background: linear-gradient(to right, rgba(255,255,255,0.9), rgba(255,255,255,0.95));
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+/* Recipe detail containers */
+.recipe-detail-container {
+  @apply rounded-2xl bg-white p-8 shadow-lg border border-gray-100;
+}
+
+.recipe-detail-section {
+  @apply rounded-xl bg-gray-50/70 p-6 mb-6;
+}
+
+/* Beautiful badges for recipe attributes */
+.attribute-badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-opacity-20 transition-colors;
+}
+
+/* Enhanced recipe card hover effects */
+.recipe-card {
+  @apply transition-all duration-300;
+}
+
+.recipe-card:hover {
+  @apply shadow-lg transform -translate-y-1;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Elegant typography */
+.recipe-title {
+  @apply text-3xl font-bold mb-4 text-gray-800;
+  font-family: 'Merriweather', serif;
+}
+
+.recipe-section-title {
+  @apply text-xl font-semibold mb-3 text-gray-700 border-b border-gray-200 pb-2;
+}
+
+/* Recipe step animation */
+.recipe-step {
+  @apply transition-all duration-300 hover:bg-gray-50 rounded-lg p-3;
+}
+
+/* Start cooking button animation */
+.start-cooking-btn {
+  @apply relative overflow-hidden transition-all duration-500;
+  background: linear-gradient(90deg, #2E7D32, #81C784, #2E7D32);
+  background-size: 200% 100%;
+  animation: gradientMove 3s ease infinite;
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Cooking mode step transitions */
+.cooking-step-transition-enter {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.cooking-step-transition-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.cooking-step-transition-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.cooking-step-transition-exit-active {
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Timer display animation */
+.timer-pulse {
+  animation: timerPulse 2s infinite;
+}
+
+@keyframes timerPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+/* Ingredient list styling */
+.ingredient-list {
+  @apply space-y-2 my-4;
+}
+
+.ingredient-list li {
+  @apply pb-2 border-b border-gray-100 flex items-start;
+}
+
+.ingredient-list li:hover {
+  @apply bg-gray-50;
+}
+
+/* Enhanced card effects */
+.shine-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.shine-effect::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(30deg);
+  transition: transform 0.5s;
+}
+
+.shine-effect:hover::after {
+  transform: rotate(30deg) translate(150%, 150%);
+}

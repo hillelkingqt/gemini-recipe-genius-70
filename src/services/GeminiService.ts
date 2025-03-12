@@ -86,6 +86,8 @@ IMPORTANT FORMATTING GUIDELINES:
 2. Each ingredient should start with the quantity followed by the ingredient name.
 3. All ingredients should be in a simple list format.
 4. Instructions should be clear, concise steps without section headers.
+5. NEVER include prefixes like "- For the dough:" in the ingredients or instructions.
+6. Do not include any labels or categories before lists. The user will be confused if you add text like "For the filling:" or "For the marinade:" before ingredients.
 
 Respond ONLY with a complete, valid JSON object using this exact structure, nothing else:
 {
@@ -269,6 +271,8 @@ IMPORTANT FORMATTING GUIDELINES:
 2. Each ingredient should start with the quantity followed by the ingredient name.
 3. All ingredients should be in a simple list format.
 4. Instructions should be clear, concise steps without section headers.
+5. NEVER include prefixes like "- For the dough:" in the ingredients or instructions.
+6. Do not include any labels or categories before lists. The user will be confused if you add text like "For the filling:" or "For the marinade:" before ingredients.
 
 For the "timeMarkers" field, identify any steps that require waiting or timed cooking (like "bake for 20 minutes" or "let rise for 1 hour"). Extract these times and create timeMarker objects with:
 - step: the step number in the instructions array (starting from 0)
