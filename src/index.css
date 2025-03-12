@@ -55,22 +55,22 @@
   }
 
   .dark {
-    --background: 20 14.3% 4.1%;
+    --background: 222 47% 11%;
     --foreground: 60 9.1% 97.8%;
 
-    --card: 20 14.3% 4.1%;
+    --card: 222 47% 11%;
     --card-foreground: 60 9.1% 97.8%;
 
-    --popover: 20 14.3% 4.1%;
+    --popover: 222 47% 11%;
     --popover-foreground: 60 9.1% 97.8%;
 
     --primary: 142 70.6% 45.3%;
     --primary-foreground: 144.9 80.4% 10%;
 
-    --secondary: 12 6.5% 15.1%;
+    --secondary: 217 32% 17%;
     --secondary-foreground: 60 9.1% 97.8%;
 
-    --muted: 12 6.5% 15.1%;
+    --muted: 217 32% 17%;
     --muted-foreground: 24 5.4% 63.9%;
 
     --accent: 142 70.6% 45.3%;
@@ -79,8 +79,8 @@
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 60 9.1% 97.8%;
 
-    --border: 12 6.5% 15.1%;
-    --input: 12 6.5% 15.1%;
+    --border: 217 32% 17%;
+    --input: 217 32% 17%;
     --ring: 142 70.6% 45.3%;
     
     /* Recipe colors for dark mode */
@@ -100,7 +100,12 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
+  }
+  
+  body.dark-mode {
+    background: radial-gradient(ellipse at top, #1a2a3a 0%, #111927 100%);
+    color: #f8fafc;
   }
   
   /* RTL support */
@@ -111,7 +116,7 @@
 
   .ltr {
     direction: ltr;
-    text-align: left;
+    text-left: left;
   }
 }
 
@@ -195,6 +200,18 @@
   .cooking-step-exit-active {
     @apply opacity-0 -translate-x-10;
   }
+  
+  /* Glass effect for components */
+  .glass-effect {
+    @apply bg-opacity-80 backdrop-blur-sm dark:bg-opacity-60 dark:border-gray-700;
+  }
+  
+  /* Gradient text animation */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-green-700 dark:from-emerald-400 dark:to-green-500;
+    background-size: 200% auto;
+    animation: gradientText 6s ease infinite;
+  }
 }
 
 /* Fix for RTL lists and text alignment */
@@ -225,41 +242,71 @@
   }
 }
 
+@keyframes gradientText {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 .gradient-animation {
   background: linear-gradient(90deg, var(--recipe-green-light) 0%, var(--recipe-green) 50%, var(--recipe-green-dark) 100%);
   background-size: 200% 200%;
   animation: gradientShift 5s ease infinite;
 }
 
+/* Dark mode specific styles */
+.dark .recipe-card {
+  @apply bg-gray-800 border-gray-700 shadow-[0_4px_12px_rgba(0,0,0,0.3)];
+}
+
+.dark .recipe-section {
+  @apply border-gray-700 shadow-[0_4px_12px_rgba(0,0,0,0.3)];
+}
+
+.dark .user-message {
+  @apply bg-gray-800 text-white;
+}
+
+.dark .ai-message {
+  @apply bg-gray-700 text-white;
+}
+
 /* Cooking mode styles */
 .cooking-mode {
-  @apply bg-white p-6 rounded-xl shadow-md animate-fade-in;
+  @apply bg-white p-6 rounded-xl shadow-md animate-fade-in dark:bg-gray-800 dark:border-gray-700;
 }
 
 .step-highlight {
-  @apply bg-amber-50 border-l-4 border-amber-500 pl-3 py-1;
+  @apply bg-amber-50 border-l-4 border-amber-500 pl-3 py-1 dark:bg-amber-900/20 dark:border-amber-700;
 }
 
 /* Tag styles with hover effects */
 .recipe-tag {
   @apply px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 
-         hover:bg-gray-200 transition-colors cursor-pointer inline-flex items-center gap-1;
+         hover:bg-gray-200 transition-colors cursor-pointer inline-flex items-center gap-1
+         dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600;
 }
 
 .recipe-tag-green {
-  @apply bg-green-100 text-green-800 hover:bg-green-200;
+  @apply bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900;
 }
 
 .recipe-tag-blue {
-  @apply bg-blue-100 text-blue-800 hover:bg-blue-200;
+  @apply bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900;
 }
 
 .recipe-tag-purple {
-  @apply bg-purple-100 text-purple-800 hover:bg-purple-200;
+  @apply bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-900;
 }
 
 .recipe-tag-orange {
-  @apply bg-orange-100 text-orange-800 hover:bg-orange-200;
+  @apply bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:hover:bg-orange-900;
 }
 
 /* Enhanced print styles */
@@ -323,7 +370,8 @@
 
 /* Timer styles */
 .timer-display {
-  @apply text-3xl font-bold text-center p-4 rounded-lg bg-gray-50 border border-gray-200;
+  @apply text-3xl font-bold text-center p-4 rounded-lg bg-gray-50 border border-gray-200
+         dark:bg-gray-800 dark:border-gray-700 dark:text-white;
 }
 
 /* Cooking mode step-by-step view */
@@ -340,45 +388,49 @@
 }
 
 .step-indicator-item.completed {
-  @apply bg-gray-200 text-gray-700 border-gray-300;
+  @apply bg-gray-200 text-gray-700 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600;
 }
 
 .step-indicator-item.upcoming {
-  @apply bg-white text-gray-400 border-gray-300;
+  @apply bg-white text-gray-400 border-gray-300 dark:bg-gray-800 dark:text-gray-500 dark:border-gray-600;
 }
 
 .step-indicator-line {
-  @apply h-0.5 flex-grow bg-gray-200;
+  @apply h-0.5 flex-grow bg-gray-200 dark:bg-gray-700;
 }
 
 .step-indicator-line.completed {
-  @apply bg-recipe-green;
+  @apply bg-recipe-green dark:bg-green-600;
 }
 
 /* Blur effect for cards */
 .frosted-glass {
-  @apply backdrop-blur-sm bg-white/80 border border-white/20 shadow-lg;
+  @apply backdrop-blur-sm bg-white/80 border border-white/20 shadow-lg
+         dark:bg-black/30 dark:border-white/10;
 }
 
 /* Elegant recipe card */
 .elegant-card {
-  @apply rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300;
+  @apply rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300
+         dark:bg-gray-800/90 dark:border-gray-700;
   background: linear-gradient(to right, rgba(255,255,255,0.9), rgba(255,255,255,0.95));
   border: 1px solid rgba(255,255,255,0.3);
 }
 
+.dark .elegant-card {
+  background: linear-gradient(to right, rgba(30,41,59,0.8), rgba(30,41,59,0.9));
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
 /* Recipe detail containers */
 .recipe-detail-container {
-  @apply rounded-2xl bg-white p-8 shadow-lg border border-gray-100;
+  @apply rounded-2xl bg-white p-8 shadow-lg border border-gray-100
+         dark:bg-gray-800 dark:border-gray-700;
 }
 
 .recipe-detail-section {
-  @apply rounded-xl bg-gray-50/70 p-6 mb-6;
-}
-
-/* Beautiful badges for recipe attributes */
-.attribute-badge {
-  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-opacity-20 transition-colors;
+  @apply rounded-xl bg-gray-50/70 p-6 mb-6
+         dark:bg-gray-700/50;
 }
 
 /* Enhanced recipe card hover effects */
@@ -391,19 +443,25 @@
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
+.dark .recipe-card:hover {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+}
+
 /* Elegant typography */
 .recipe-title {
-  @apply text-3xl font-bold mb-4 text-gray-800;
+  @apply text-3xl font-bold mb-4 text-gray-800 dark:text-gray-100;
   font-family: 'Merriweather', serif;
 }
 
 .recipe-section-title {
-  @apply text-xl font-semibold mb-3 text-gray-700 border-b border-gray-200 pb-2;
+  @apply text-xl font-semibold mb-3 text-gray-700 border-b border-gray-200 pb-2
+         dark:text-gray-200 dark:border-gray-600;
 }
 
 /* Recipe step animation */
 .recipe-step {
-  @apply transition-all duration-300 hover:bg-gray-50 rounded-lg p-3;
+  @apply transition-all duration-300 hover:bg-gray-50 rounded-lg p-3
+         dark:hover:bg-gray-700;
 }
 
 /* Start cooking button animation */
@@ -412,6 +470,10 @@
   background: linear-gradient(90deg, #2E7D32, #81C784, #2E7D32);
   background-size: 200% 100%;
   animation: gradientMove 3s ease infinite;
+}
+
+.dark .start-cooking-btn {
+  background: linear-gradient(90deg, #22c55e, #34d399, #22c55e);
 }
 
 @keyframes gradientMove {
@@ -426,57 +488,17 @@
   }
 }
 
-/* Cooking mode step transitions */
-.cooking-step-transition-enter {
-  opacity: 0;
-  transform: translateX(20px);
-}
-
-.cooking-step-transition-enter-active {
-  opacity: 1;
-  transform: translateX(0);
-  transition: opacity 300ms, transform 300ms;
-}
-
-.cooking-step-transition-exit {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.cooking-step-transition-exit-active {
-  opacity: 0;
-  transform: translateX(-20px);
-  transition: opacity 300ms, transform 300ms;
-}
-
-/* Timer display animation */
-.timer-pulse {
-  animation: timerPulse 2s infinite;
-}
-
-@keyframes timerPulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-  }
-}
-
 /* Ingredient list styling */
 .ingredient-list {
   @apply space-y-2 my-4;
 }
 
 .ingredient-list li {
-  @apply pb-2 border-b border-gray-100 flex items-start;
+  @apply pb-2 border-b border-gray-100 flex items-start dark:border-gray-700;
 }
 
 .ingredient-list li:hover {
-  @apply bg-gray-50;
+  @apply bg-gray-50 dark:bg-gray-700;
 }
 
 /* Enhanced card effects */

@@ -18,8 +18,10 @@ export const Navigation = () => {
     
     if (savedDarkMode) {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark-mode');
     } else {
       document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark-mode');
     }
   }, []);
   
@@ -30,8 +32,10 @@ export const Navigation = () => {
     
     if (newDarkMode) {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark-mode');
     } else {
       document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark-mode');
     }
     
     localStorage.setItem('darkMode', newDarkMode.toString());
@@ -49,8 +53,8 @@ export const Navigation = () => {
   
   return (
     <motion.nav 
-      className={`sticky top-0 w-full bg-white dark:bg-gray-900 z-50 transition-all duration-300 ${
-        scrollPosition > 50 ? 'shadow-md' : ''
+      className={`sticky top-0 w-full bg-white/95 backdrop-blur-md dark:bg-gray-900/95 z-50 transition-all duration-300 ${
+        scrollPosition > 50 ? 'shadow-lg' : ''
       }`}
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
@@ -66,7 +70,7 @@ export const Navigation = () => {
               transition={{ delay: 0.2 }}
             >
               <CookingPot className="h-6 w-6 mr-2" />
-              <span className="gradient-animation">Recipe Genius</span>
+              <span className="gradient-text">Recipe Genius</span>
             </motion.div>
           </div>
           
@@ -80,7 +84,7 @@ export const Navigation = () => {
             <Link to="/">
               <Button 
                 variant={location.pathname === '/' ? 'default' : 'ghost'}
-                className="flex items-center gap-2 font-medium dark:text-white dark:hover:bg-gray-800"
+                className="flex items-center gap-2 font-medium dark:text-white dark:hover:bg-gray-800 glass-effect"
               >
                 <MessageSquare className="h-5 w-5" />
                 Chat
@@ -90,7 +94,7 @@ export const Navigation = () => {
             <Link to="/recipes">
               <Button 
                 variant={location.pathname === '/recipes' ? 'default' : 'ghost'}
-                className="flex items-center gap-2 font-medium dark:text-white dark:hover:bg-gray-800"
+                className="flex items-center gap-2 font-medium dark:text-white dark:hover:bg-gray-800 glass-effect"
               >
                 <CookingPot className="h-5 w-5" />
                 Recipes
@@ -101,10 +105,10 @@ export const Navigation = () => {
               variant="ghost" 
               size="icon"
               onClick={toggleDarkMode}
-              className="ml-2 dark:text-white dark:hover:bg-gray-800"
+              className="ml-2 dark:text-white dark:hover:bg-gray-800 glass-effect"
               aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
             >
-              {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {isDarkMode ? <Sun className="h-5 w-5 text-yellow-400" /> : <Moon className="h-5 w-5" />}
             </Button>
           </motion.div>
           
@@ -117,7 +121,7 @@ export const Navigation = () => {
               className="mr-2 dark:text-white dark:hover:bg-gray-800"
               aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
             >
-              {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {isDarkMode ? <Sun className="h-5 w-5 text-yellow-400" /> : <Moon className="h-5 w-5" />}
             </Button>
             
             <Button

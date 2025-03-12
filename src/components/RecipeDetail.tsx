@@ -47,7 +47,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
   const handleExportPdf = () => {
     const win = window.open('', '_blank');
     if (win) {
-      const docLang = isRTL ? 'rtl' : 'ltr';
+      const docLang = isRTL ? 'he' : 'en';
       const docDir = isRTL ? 'rtl' : 'ltr';
       
       win.document.write(`
@@ -328,7 +328,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
             
             {recipe.timeMarkers?.find(marker => marker.step === currentStepIndex) && (
               <div className="mt-4 bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg flex items-center gap-2">
-                <Timer className="h-5 w-5 text-blue-500 dark:text-blue-400" />
+                <AlarmClock className="h-5 w-5 text-blue-500 dark:text-blue-400" />
                 <span className="font-medium dark:text-blue-300">
                   {isRTL ? "שים לב לזמן:" : "Time needed:"} 
                   {recipe.timeMarkers.find(marker => marker.step === currentStepIndex)?.duration} 
@@ -586,7 +586,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity dark:text-gray-300">
-                                <Timer className="h-4 w-4" />
+                                <AlarmClock className="h-4 w-4" />
                               </Button>
                             </DialogTrigger>
                             <DialogContent className="dark:bg-gray-800 dark:text-gray-100">
