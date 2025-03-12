@@ -101,20 +101,21 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
   
   return (
     <motion.div 
-      className={`max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg recipe-section ${isRTL ? 'rtl' : 'ltr'}`}
+      dir={isRTL ? "rtl" : "ltr"}
+      className={`w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 bg-white rounded-lg shadow-lg recipe-section break-words ${isRTL ? 'rtl' : 'ltr'}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
       <div className={`flex ${isRTL ? 'flex-row-reverse' : 'flex-row'} justify-between items-center mb-6 print:hidden`}>
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/recipes')}
-          className="text-recipe-green"
-        >
-          <ArrowLeft className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-          {isRTL ? 'חזרה לכל המתכונים' : 'Back to All Recipes'}
-        </Button>
+<Button
+  variant="ghost"
+  onClick={() => navigate('/recipes')}
+>
+  <ArrowLeft className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+  {isRTL ? 'חזרה לכל המתכונים' : 'Back to All Recipes'}
+</Button>
+
         
         <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} space-x-2`}>
           <Button
@@ -278,20 +279,39 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
         
         <TabsContent value="recipe" className="space-y-8">
           <div className="mb-8">
-            <h2 className={`text-2xl font-semibold text-recipe-orange mb-4 ${isRTL ? 'text-right' : 'text-left'}`}>
-              {ingredientsLabel}
-            </h2>
-            <ul className={`${isRTL ? 'list-disc pr-6' : 'list-disc pl-6'} space-y-2`}>
-              {recipe.ingredients.map((ingredient, index) => (
-                <li key={index} className="text-lg">{ingredient}</li>
-              ))}
-            </ul>
+                      <h2
+                          className={
+                              `text-2xl font-semibold text-recipe-orange mb-4 ` +
+                              (isRTL ? 'text-right' : 'text-left')
+                          }
+                      >
+                          {ingredientsLabel}
+                      </h2>
+
+                      <ul
+                          className={
+                              isRTL
+                                  ? "list-disc pr-6 list-inside space-y-2"
+                                  : "list-disc pl-6 list-outside space-y-2"
+                          }
+                      >
+                          {recipe.ingredients.map((ingredient, index) => (
+                              <li key={index} className="text-lg">{ingredient}</li>
+                          ))}
+                      </ul>
+
           </div>
           
           <div>
-            <h2 className={`text-2xl font-semibold text-recipe-orange mb-4 ${isRTL ? 'text-right' : 'text-left'}`}>
-              {instructionsLabel}
-            </h2>
+                      <h2
+                          className={
+                              `text-2xl font-semibold text-recipe-orange mb-4 ` +
+                              (isRTL ? 'text-right' : 'text-left')
+                          }
+                      >
+                          {instructionsLabel}
+                      </h2>
+
             <ol className={`${isRTL ? 'list-decimal pr-6' : 'list-decimal pl-6'} space-y-4`}>
               {recipe.instructions.map((instruction, index) => (
                 <li key={index} className="text-lg relative group">
