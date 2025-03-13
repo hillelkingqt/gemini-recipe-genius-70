@@ -487,15 +487,18 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
                           </Button>
 
             
-            <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} space-x-2`}>          
-              <Button
-                variant="outline"
-                onClick={handleExportPdf}
-                className="text-recipe-orange border-recipe-orange hover:bg-recipe-orange/10 dark:text-orange-400 dark:border-orange-700 dark:hover:bg-orange-900/30"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {isRTL ? 'פתח בחלון חדש' : 'Open in New Window'}
-              </Button>
+                          <div
+                              className={`flex flex-nowrap items-center gap-3 ${isRTL ? 'flex-row-reverse' : 'flex-row'
+                                  }`}
+                          >
+                              <Button
+                                  variant="outline"
+                                  onClick={handleExportPdf}
+                                  className="text-recipe-orange border-recipe-orange hover:bg-recipe-orange/10 dark:text-orange-400 dark:border-orange-700 dark:hover:bg-orange-900/30"
+                              >
+                                  <Download className="h-4 w-4 mr-2" />
+                                  {isRTL ? 'פתח בחלון חדש' : 'Open in New Window'}
+                              </Button>
 
                               {onPublish && (
                                   <Button
@@ -508,25 +511,25 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
                                   </Button>
                               )}
 
-              
-              <Button
-                variant="outline"
-                onClick={generateShoppingList}
-                className="text-blue-600 border-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-700 dark:hover:bg-blue-900/30"
-              >
-                <ShoppingBag className="h-4 w-4 mr-2" />
-                {isRTL ? 'רשימת קניות' : 'Shopping List'}
-              </Button>
-              
-              <Button
-                variant="outline"
-                onClick={handleStartCooking}
-                className="text-purple-600 border-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-900/30 animate-pulse"
-              >
-                <PlayCircle className="h-4 w-4 mr-2" />
-                {isRTL ? 'התחל לבשל' : 'Start Cooking'}
-              </Button>
-            </div>
+                              <Button
+                                  variant="outline"
+                                  onClick={generateShoppingList}
+                                  className="text-blue-600 border-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-700 dark:hover:bg-blue-900/30"
+                              >
+                                  <ShoppingBag className="h-4 w-4 mr-2" />
+                                  {isRTL ? 'רשימת קניות' : 'Shopping List'}
+                              </Button>
+
+                              <Button
+                                  variant="outline"
+                                  onClick={handleStartCooking}
+                                  className="text-purple-600 border-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-900/30 animate-pulse"
+                              >
+                                  <PlayCircle className="h-4 w-4 mr-2" />
+                                  {isRTL ? 'התחל לבשל' : 'Start Cooking'}
+                              </Button>
+                          </div>
+
           </div>
           
           <div className="flex justify-between items-center mb-4">

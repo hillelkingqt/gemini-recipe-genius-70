@@ -63,7 +63,7 @@ const AppRoutes = () => {
                     path="/"
                     element={
                         <ProtectedRoute>
-                            <main className="max-w-7xl mx-auto pb-16">
+                            <main className="max-w-7xl mx-auto pb-196">
                                 <Chat />
                             </main>
                         </ProtectedRoute>
