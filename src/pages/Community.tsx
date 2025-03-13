@@ -1,55 +1,55 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import RecipeCard from '@/components/RecipeCard';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe } from '@/types/Recipe';
+import RecipeCard from '@/components/RecipeCard';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Search, Filter, Globe, ChefHat, Clock, Tag, 
-  Zap, BookOpen, Filter as FilterIcon, X, Loader2,
-  Users, ThumbsUp, Heart
-} from 'lucide-react';
 import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Search, 
+  Filter, 
+  Globe, 
+  ThumbsUp, 
+  User,
+  Loader2,
+  SlidersHorizontal,
+  CheckCircle,
+  XCircle,
+  Heart,
+  TagIcon,
+  RefreshCw
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTheme } from '@/contexts/ThemeContext';
 
-const Community = () => {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeFilters, setActiveFilters] = useState<{
-    cuisine: string[];
-    difficulty: string[];
-    tags: string[];
-  }>({
-    cuisine: [],
-    difficulty: [],
-    tags: []
-  });
+const Community: React.FC = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
-  
-  // Filter options
-  const [availableCuisines, setAvailableCuisines] = useState<string[]>([]);
+  const { isDarkMode } = useTheme();
+  const [communityRecipes, setCommunityRecipes] = useState<Recipe[]>([]);
+  const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [cuisineFilters, setCuisineFilters] = useState<string[]>([]);
+  const [difficultyFilters, setDifficultyFilters] = useState<string[]>([]);
+  const [tagFilters, setTagFilters] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<'newest' | 'popular'>('newest');
   const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const difficulties = ['easy', 'medium', 'hard'];
-  
+  const [availableCuisines, setAvailableCuisines] = useState<string[]>([]);
+  const [userLikes, setUserLikes] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
-    fetchPublishedRecipes();
+    fetchCommunityRecipes();
   }, []);
-  
-  const fetchPublishedRecipes = async () => {
+
+  const fetchCommunityRecipes = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -57,483 +57,585 @@ const Community = () => {
         .select('*')
         .eq('status', 'published')
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      
-      if (data) {
-        setRecipes(data as Recipe[]);
-        
-        // Extract unique cuisines and tags
-        const cuisines = [...new Set(data.map(recipe => recipe.cuisine).filter(Boolean))];
-        setAvailableCuisines(cuisines as string[]);
-        
-        // Extract all tags and flatten the array
-        const allTags = data
-          .map(recipe => recipe.tags ? (recipe.tags as string[]) : [])
-          .flat()
-          .filter(Boolean);
-        
-        // Get unique tags
-        const uniqueTags = [...new Set(allTags)];
-        setAvailableTags(uniqueTags as string[]);
+
+      // Convert Supabase response to Recipe type
+      const recipes = data.map(item => ({
+        id: item.id,
+        name: item.name,
+        ingredients: Array.isArray(item.ingredients) ? item.ingredients : [],
+        instructions: Array.isArray(item.instructions) ? item.instructions : [],
+        createdAt: new Date(item.created_at),
+        isRTL: item.is_rtl,
+        ingredientsLabel: item.ingredients_label,
+        instructionsLabel: item.instructions_label,
+        isRecipe: item.is_recipe,
+        content: item.content,
+        isFavorite: item.is_favorite || false,
+        tags: Array.isArray(item.tags) ? item.tags : [],
+        difficulty: item.difficulty as 'easy' | 'medium' | 'hard',
+        estimatedTime: item.estimated_time,
+        calories: item.calories,
+        notes: item.notes || '',
+        rating: item.rating || 0,
+        status: item.status as 'draft' | 'accepted' | 'rejected' | 'published',
+        timeMarkers: Array.isArray(item.time_markers) ? item.time_markers : [],
+        prepTime: item.prep_time,
+        cookTime: item.cook_time,
+        totalTime: item.total_time,
+        servings: typeof item.servings === 'number' ? item.servings : 4,
+        nutritionInfo: item.nutrition_info || {},
+        seasonality: Array.isArray(item.seasonality) ? item.seasonality : [],
+        cuisine: item.cuisine,
+        likes: item.likes || 0,
+        author: item.user_id,
+      }));
+
+      setCommunityRecipes(recipes);
+      setFilteredRecipes(recipes);
+
+      // Extract all unique tags and cuisines for filters
+      const allTags = recipes.flatMap(recipe => recipe.tags || []);
+      const uniqueTags = [...new Set(allTags)];
+      setAvailableTags(uniqueTags);
+
+      const allCuisines = recipes.map(recipe => recipe.cuisine).filter(Boolean) as string[];
+      const uniqueCuisines = [...new Set(allCuisines)];
+      setAvailableCuisines(uniqueCuisines);
+
+      // Fetch likes for current user
+      if (user) {
+        fetchUserLikes();
       }
+
     } catch (error) {
-      console.error('Error fetching published recipes:', error);
+      console.error('Error fetching community recipes:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load community recipes.',
+        description: 'Failed to load community recipes',
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
   };
-  
-  const handleLikeRecipe = async (recipe: Recipe) => {
+
+  const fetchUserLikes = async () => {
+    if (!user) return;
+
     try {
-      // Update like count in database
-      const { error } = await supabase
-        .from('recipes')
-        .update({ likes: (recipe.likes || 0) + 1 })
-        .eq('id', recipe.id);
-      
+      const { data, error } = await supabase
+        .from('recipe_likes')
+        .select('recipe_id')
+        .eq('user_id', user.id);
+
       if (error) throw error;
-      
-      // Update local state
-      setRecipes(recipes.map(r => 
-        r.id === recipe.id 
-          ? { ...r, likes: (r.likes || 0) + 1 } 
-          : r
-      ));
-      
-      toast({
-        title: 'Recipe Liked!',
-        description: `You liked "${recipe.name}"`,
+
+      const likes: Record<string, boolean> = {};
+      data.forEach(like => {
+        likes[like.recipe_id] = true;
       });
+
+      setUserLikes(likes);
     } catch (error) {
-      console.error('Error liking recipe:', error);
+      console.error('Error fetching user likes:', error);
+    }
+  };
+
+  const handleLike = async (recipeId: string) => {
+    if (!user) {
+      toast({
+        title: 'Authentication required',
+        description: 'Please sign in to like recipes',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const isLiked = userLikes[recipeId];
+
+      if (isLiked) {
+        // Unlike
+        const { error: deleteLikeError } = await supabase
+          .from('recipe_likes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('recipe_id', recipeId);
+
+        if (deleteLikeError) throw deleteLikeError;
+
+        // Update recipe likes count
+        const { error: updateRecipeError } = await supabase.rpc('decrement_likes', {
+          recipe_id: recipeId
+        });
+
+        if (updateRecipeError) throw updateRecipeError;
+
+        // Update local state
+        setUserLikes(prev => ({
+          ...prev,
+          [recipeId]: false
+        }));
+
+        setCommunityRecipes(prev => prev.map(recipe => 
+          recipe.id === recipeId 
+            ? { ...recipe, likes: (recipe.likes || 0) - 1 } 
+            : recipe
+        ));
+
+        setFilteredRecipes(prev => prev.map(recipe => 
+          recipe.id === recipeId 
+            ? { ...recipe, likes: (recipe.likes || 0) - 1 } 
+            : recipe
+        ));
+
+      } else {
+        // Like
+        const { error: insertLikeError } = await supabase
+          .from('recipe_likes')
+          .insert({ user_id: user.id, recipe_id: recipeId });
+
+        if (insertLikeError) throw insertLikeError;
+
+        // Update recipe likes count
+        const { error: updateRecipeError } = await supabase.rpc('increment_likes', {
+          recipe_id: recipeId
+        });
+
+        if (updateRecipeError) throw updateRecipeError;
+
+        // Update local state
+        setUserLikes(prev => ({
+          ...prev,
+          [recipeId]: true
+        }));
+
+        setCommunityRecipes(prev => prev.map(recipe => 
+          recipe.id === recipeId 
+            ? { ...recipe, likes: (recipe.likes || 0) + 1 } 
+            : recipe
+        ));
+
+        setFilteredRecipes(prev => prev.map(recipe => 
+          recipe.id === recipeId 
+            ? { ...recipe, likes: (recipe.likes || 0) + 1 } 
+            : recipe
+        ));
+      }
+
+    } catch (error) {
+      console.error('Error liking/unliking recipe:', error);
       toast({
         title: 'Error',
-        description: 'Failed to like recipe.',
+        description: 'Failed to like/unlike recipe',
         variant: 'destructive',
       });
     }
   };
-  
-  const toggleFilter = (type: 'cuisine' | 'difficulty' | 'tags', value: string) => {
-    setActiveFilters(prev => {
-      const current = [...prev[type]];
-      const index = current.indexOf(value);
-      
-      if (index === -1) {
-        // Add filter
-        return {
-          ...prev,
-          [type]: [...current, value]
-        };
-      } else {
-        // Remove filter
-        current.splice(index, 1);
-        return {
-          ...prev,
-          [type]: current
-        };
-      }
-    });
+
+  const applyFilters = () => {
+    let filtered = [...communityRecipes];
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(recipe => 
+        recipe.name.toLowerCase().includes(query) || 
+        recipe.tags?.some(tag => tag.toLowerCase().includes(query)) ||
+        recipe.cuisine?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply cuisine filters
+    if (cuisineFilters.length > 0) {
+      filtered = filtered.filter(recipe => 
+        recipe.cuisine && cuisineFilters.includes(recipe.cuisine)
+      );
+    }
+
+    // Apply difficulty filters
+    if (difficultyFilters.length > 0) {
+      filtered = filtered.filter(recipe => 
+        recipe.difficulty && difficultyFilters.includes(recipe.difficulty)
+      );
+    }
+
+    // Apply tag filters
+    if (tagFilters.length > 0) {
+      filtered = filtered.filter(recipe => 
+        recipe.tags && tagFilters.some(tag => recipe.tags?.includes(tag))
+      );
+    }
+
+    // Apply sorting
+    if (sortBy === 'newest') {
+      filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    } else if (sortBy === 'popular') {
+      filtered.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+    }
+
+    setFilteredRecipes(filtered);
   };
-  
+
+  // Apply filters when filter values change
+  useEffect(() => {
+    applyFilters();
+  }, [searchQuery, cuisineFilters, difficultyFilters, tagFilters, sortBy, communityRecipes]);
+
+  const toggleCuisineFilter = (cuisine: string) => {
+    setCuisineFilters(prev => 
+      prev.includes(cuisine) 
+        ? prev.filter(c => c !== cuisine) 
+        : [...prev, cuisine]
+    );
+  };
+
+  const toggleDifficultyFilter = (difficulty: string) => {
+    setDifficultyFilters(prev => 
+      prev.includes(difficulty) 
+        ? prev.filter(d => d !== difficulty) 
+        : [...prev, difficulty]
+    );
+  };
+
+  const toggleTagFilter = (tag: string) => {
+    setTagFilters(prev => 
+      prev.includes(tag) 
+        ? prev.filter(t => t !== tag) 
+        : [...prev, tag]
+    );
+  };
+
   const clearFilters = () => {
-    setActiveFilters({
-      cuisine: [],
-      difficulty: [],
-      tags: []
-    });
-    setSearchTerm('');
-  };
-  
-  // Filter and search recipes
-  const filteredRecipes = recipes.filter(recipe => {
-    // Search term filter
-    if (searchTerm && !(
-      recipe.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (recipe.cuisine && recipe.cuisine.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (recipe.tags && (recipe.tags as string[]).some(tag => 
-        tag.toLowerCase().includes(searchTerm.toLowerCase())
-      ))
-    )) {
-      return false;
-    }
-    
-    // Cuisine filter
-    if (activeFilters.cuisine.length > 0 && 
-        recipe.cuisine && 
-        !activeFilters.cuisine.includes(recipe.cuisine)) {
-      return false;
-    }
-    
-    // Difficulty filter
-    if (activeFilters.difficulty.length > 0 && 
-        recipe.difficulty && 
-        !activeFilters.difficulty.includes(recipe.difficulty)) {
-      return false;
-    }
-    
-    // Tags filter
-    if (activeFilters.tags.length > 0 && 
-        (!recipe.tags || !activeFilters.tags.some(tag => 
-          (recipe.tags as string[]).includes(tag)
-        ))) {
-      return false;
-    }
-    
-    return true;
-  });
-  
-  // Color mapping for tags
-  const getTagColorClass = (tag: string) => {
-    const tagLower = tag.toLowerCase();
-    if (tagLower.includes('vegan') || tagLower.includes('vegetarian') || 
-        tagLower.includes('green') || tagLower.includes('healthy')) {
-      return 'recipe-tag-green';
-    } else if (tagLower.includes('quick') || tagLower.includes('easy') || 
-               tagLower.includes('fast') || tagLower.includes('simple')) {
-      return 'recipe-tag-blue';
-    } else if (tagLower.includes('dessert') || tagLower.includes('sweet') || 
-               tagLower.includes('cake') || tagLower.includes('chocolate')) {
-      return 'recipe-tag-purple';
-    } else if (tagLower.includes('spicy') || tagLower.includes('hot') || 
-               tagLower.includes('bbq') || tagLower.includes('grill')) {
-      return 'recipe-tag-orange';
-    }
-    return '';
-  };
-  
-  // View recipe details
-  const viewRecipeDetails = (recipe: Recipe) => {
-    // Navigate to recipe detail page
-    navigate(`/recipe/${recipe.id}`);
+    setSearchQuery('');
+    setCuisineFilters([]);
+    setDifficultyFilters([]);
+    setTagFilters([]);
+    setSortBy('newest');
   };
 
   return (
-    <div className="container py-8 max-w-7xl">
+    <div className="container mx-auto py-8 px-4 min-h-screen">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="mb-8"
       >
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold flex items-center">
-              <Users className="mr-3 h-8 w-8 text-recipe-green" />
-              Community Recipes
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Discover and explore recipes shared by our community
-            </p>
+        <div className="flex items-center gap-2 mb-2">
+          <Globe className="h-6 w-6 text-recipe-green" />
+          <h1 className="text-3xl font-bold">Community Recipes</h1>
+        </div>
+        <p className="text-gray-600 dark:text-gray-400">
+          Discover and explore recipes shared by the community
+        </p>
+      </motion.div>
+
+      {/* Search and Filter Bar */}
+      <div className="mb-6">
+        <div className="flex flex-col md:flex-row gap-4 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search recipes, tags, or cuisines..."
+              className="pl-9 bg-white dark:bg-gray-800"
+            />
           </div>
-          
-          {/* Search and Filter Controls */}
-          <div className="flex flex-col sm:flex-row gap-3 md:min-w-[400px]">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-              <Input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search recipes..."
-                className="pl-10"
-              />
-            </div>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex gap-2 items-center">
-                  <FilterIcon className="h-4 w-4" />
-                  <span>Filter</span>
-                  {(activeFilters.cuisine.length > 0 || 
-                    activeFilters.difficulty.length > 0 || 
-                    activeFilters.tags.length > 0) && (
-                    <Badge className="ml-1 bg-recipe-green">
-                      {activeFilters.cuisine.length + 
-                       activeFilters.difficulty.length + 
-                       activeFilters.tags.length}
-                    </Badge>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-64">
-                <DropdownMenuLabel className="flex items-center justify-between">
-                  <span>Filter Recipes</span>
-                  {(activeFilters.cuisine.length > 0 || 
-                    activeFilters.difficulty.length > 0 || 
-                    activeFilters.tags.length > 0) && (
-                    <Button 
-                      variant="ghost" 
-                      className="h-8 px-2 text-xs"
-                      onClick={clearFilters}
-                    >
-                      <X className="h-3 w-3 mr-1" /> Clear All
-                    </Button>
-                  )}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                
-                {/* Cuisine Filter */}
-                <DropdownMenuLabel className="text-xs text-gray-500 flex items-center pt-2">
-                  <Globe className="h-3 w-3 mr-1" /> Cuisine
-                </DropdownMenuLabel>
-                {availableCuisines.map(cuisine => (
-                  <DropdownMenuItem 
-                    key={cuisine}
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      toggleFilter('cuisine', cuisine);
-                    }}
-                    className="flex items-center justify-between cursor-pointer"
-                  >
-                    {cuisine}
-                    {activeFilters.cuisine.includes(cuisine) && <Check className="h-4 w-4 text-recipe-green" />}
-                  </DropdownMenuItem>
-                ))}
-                
-                <DropdownMenuSeparator />
-                
-                {/* Difficulty Filter */}
-                <DropdownMenuLabel className="text-xs text-gray-500 flex items-center pt-2">
-                  <ChefHat className="h-3 w-3 mr-1" /> Difficulty
-                </DropdownMenuLabel>
-                {difficulties.map(difficulty => (
-                  <DropdownMenuItem 
-                    key={difficulty}
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      toggleFilter('difficulty', difficulty);
-                    }}
-                    className="flex items-center justify-between cursor-pointer capitalize"
-                  >
-                    {difficulty}
-                    {activeFilters.difficulty.includes(difficulty) && <Check className="h-4 w-4 text-recipe-green" />}
-                  </DropdownMenuItem>
-                ))}
-                
-                <DropdownMenuSeparator />
-                
-                {/* Tags Filter */}
-                <DropdownMenuLabel className="text-xs text-gray-500 flex items-center pt-2">
-                  <Tag className="h-3 w-3 mr-1" /> Popular Tags
-                </DropdownMenuLabel>
-                {availableTags.slice(0, 8).map(tag => (
-                  <DropdownMenuItem 
-                    key={tag}
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      toggleFilter('tags', tag);
-                    }}
-                    className="flex items-center justify-between cursor-pointer"
-                  >
-                    {tag}
-                    {activeFilters.tags.includes(tag) && <Check className="h-4 w-4 text-recipe-green" />}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex gap-2">
+            <Tabs defaultValue={sortBy} onValueChange={(value) => setSortBy(value as 'newest' | 'popular')} className="hidden md:block">
+              <TabsList className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <TabsTrigger value="newest" className="data-[state=active]:bg-recipe-green/10 data-[state=active]:text-recipe-green">
+                  Newest
+                </TabsTrigger>
+                <TabsTrigger value="popular" className="data-[state=active]:bg-recipe-green/10 data-[state=active]:text-recipe-green">
+                  Most Popular
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="bg-white dark:bg-gray-800"
+            >
+              <Filter className="mr-2 h-4 w-4" />
+              Filters
+              {(cuisineFilters.length > 0 || difficultyFilters.length > 0 || tagFilters.length > 0) && (
+                <Badge className="ml-2 bg-recipe-green text-white">
+                  {cuisineFilters.length + difficultyFilters.length + tagFilters.length}
+                </Badge>
+              )}
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={fetchCommunityRecipes}
+              title="Refresh recipes"
+              className="bg-white dark:bg-gray-800"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-        
-        {/* Active Filters */}
-        {(activeFilters.cuisine.length > 0 || 
-          activeFilters.difficulty.length > 0 || 
-          activeFilters.tags.length > 0) && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {activeFilters.cuisine.map(cuisine => (
+
+        {/* Responsive sort options for mobile */}
+        <div className="md:hidden mb-4">
+          <Tabs defaultValue={sortBy} onValueChange={(value) => setSortBy(value as 'newest' | 'popular')}>
+            <TabsList className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <TabsTrigger value="newest" className="flex-1 data-[state=active]:bg-recipe-green/10 data-[state=active]:text-recipe-green">
+                Newest
+              </TabsTrigger>
+              <TabsTrigger value="popular" className="flex-1 data-[state=active]:bg-recipe-green/10 data-[state=active]:text-recipe-green">
+                Most Popular
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {/* Filters Panel */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mb-6 overflow-hidden"
+            >
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-medium flex items-center">
+                    <SlidersHorizontal className="mr-2 h-4 w-4 text-recipe-green" />
+                    Filter Options
+                  </h3>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={clearFilters}
+                      className="text-gray-500"
+                    >
+                      <XCircle className="mr-2 h-3 w-3" />
+                      Clear All
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setShowFilters(false)}
+                      className="text-recipe-green"
+                    >
+                      <CheckCircle className="mr-2 h-3 w-3" />
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Cuisine Filters */}
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center">
+                      <Globe className="mr-2 h-4 w-4 text-recipe-green" />
+                      Cuisine
+                    </h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                      {availableCuisines.length > 0 ? (
+                        availableCuisines.map(cuisine => (
+                          <div key={cuisine} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`cuisine-${cuisine}`} 
+                              checked={cuisineFilters.includes(cuisine)}
+                              onCheckedChange={() => toggleCuisineFilter(cuisine)}
+                            />
+                            <Label htmlFor={`cuisine-${cuisine}`} className="cursor-pointer">{cuisine}</Label>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">No cuisines available</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Difficulty Filters */}
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center">
+                      <User className="mr-2 h-4 w-4 text-recipe-green" />
+                      Difficulty
+                    </h4>
+                    <div className="space-y-2">
+                      {['easy', 'medium', 'hard'].map(difficulty => (
+                        <div key={difficulty} className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`difficulty-${difficulty}`} 
+                            checked={difficultyFilters.includes(difficulty)}
+                            onCheckedChange={() => toggleDifficultyFilter(difficulty)}
+                          />
+                          <Label htmlFor={`difficulty-${difficulty}`} className="cursor-pointer capitalize">{difficulty}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Tag Filters */}
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center">
+                      <TagIcon className="mr-2 h-4 w-4 text-recipe-green" />
+                      Popular Tags
+                    </h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                      {availableTags.length > 0 ? (
+                        availableTags.slice(0, 10).map(tag => (
+                          <div key={tag} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`tag-${tag}`} 
+                              checked={tagFilters.includes(tag)}
+                              onCheckedChange={() => toggleTagFilter(tag)}
+                            />
+                            <Label htmlFor={`tag-${tag}`} className="cursor-pointer">{tag}</Label>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">No tags available</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Active Filters Display */}
+        {(cuisineFilters.length > 0 || difficultyFilters.length > 0 || tagFilters.length > 0) && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {cuisineFilters.map(cuisine => (
               <Badge 
-                key={cuisine} 
-                className="bg-recipe-green flex items-center gap-1 pl-3 pr-2 py-1.5 cursor-pointer"
-                onClick={() => toggleFilter('cuisine', cuisine)}
+                key={`filter-cuisine-${cuisine}`} 
+                variant="outline"
+                className="bg-recipe-green/10 text-recipe-green border-recipe-green/30 flex items-center"
               >
-                <Globe className="h-3 w-3 mr-1" />
+                <Globe className="mr-1 h-3 w-3" />
                 {cuisine}
-                <X className="h-3 w-3 ml-1" />
+                <button 
+                  onClick={() => toggleCuisineFilter(cuisine)}
+                  className="ml-1 hover:text-red-500"
+                >
+                  <XCircle className="h-3 w-3" />
+                </button>
               </Badge>
             ))}
             
-            {activeFilters.difficulty.map(difficulty => (
+            {difficultyFilters.map(difficulty => (
               <Badge 
-                key={difficulty} 
-                className="bg-recipe-orange flex items-center gap-1 pl-3 pr-2 py-1.5 cursor-pointer capitalize"
-                onClick={() => toggleFilter('difficulty', difficulty)}
+                key={`filter-difficulty-${difficulty}`} 
+                variant="outline"
+                className="bg-recipe-orange/10 text-recipe-orange border-recipe-orange/30 flex items-center"
               >
-                <ChefHat className="h-3 w-3 mr-1" />
+                <User className="mr-1 h-3 w-3" />
                 {difficulty}
-                <X className="h-3 w-3 ml-1" />
+                <button 
+                  onClick={() => toggleDifficultyFilter(difficulty)}
+                  className="ml-1 hover:text-red-500"
+                >
+                  <XCircle className="h-3 w-3" />
+                </button>
               </Badge>
             ))}
             
-            {activeFilters.tags.map(tag => (
+            {tagFilters.map(tag => (
               <Badge 
-                key={tag} 
-                className="bg-blue-500 flex items-center gap-1 pl-3 pr-2 py-1.5 cursor-pointer"
-                onClick={() => toggleFilter('tags', tag)}
+                key={`filter-tag-${tag}`} 
+                variant="outline"
+                className="bg-blue-500/10 text-blue-500 border-blue-500/30 flex items-center"
               >
-                <Tag className="h-3 w-3 mr-1" />
+                <TagIcon className="mr-1 h-3 w-3" />
                 {tag}
-                <X className="h-3 w-3 ml-1" />
+                <button 
+                  onClick={() => toggleTagFilter(tag)}
+                  className="ml-1 hover:text-red-500"
+                >
+                  <XCircle className="h-3 w-3" />
+                </button>
               </Badge>
             ))}
           </div>
         )}
-      </motion.div>
-      
-      {/* Loading State */}
+      </div>
+
+      {/* Recipe Grid */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="text-center">
-            <Loader2 className="h-12 w-12 animate-spin mx-auto text-recipe-green mb-4" />
-            <p className="text-lg text-gray-600 dark:text-gray-400">Loading community recipes...</p>
-          </div>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-recipe-green" />
+          <span className="ml-2 text-gray-500">Loading recipes...</span>
+        </div>
+      ) : filteredRecipes.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredRecipes.map(recipe => (
+            <motion.div
+              key={recipe.id}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="relative bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow"
+            >
+              <RecipeCard 
+                recipe={recipe} 
+                showActions={false} 
+                onEdit={() => {}} 
+                onDelete={() => {}}
+              />
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between">
+                <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                  <span className="flex items-center">
+                    <ThumbsUp className="h-4 w-4 mr-1 text-recipe-green" />
+                    {recipe.likes || 0} likes
+                  </span>
+                </div>
+                <Button
+                  variant={userLikes[recipe.id] ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleLike(recipe.id)}
+                  className={userLikes[recipe.id] ? "bg-recipe-green hover:bg-recipe-green/90" : "text-recipe-green hover:bg-recipe-green/10"}
+                >
+                  {userLikes[recipe.id] ? (
+                    <>
+                      <Heart className="h-4 w-4 mr-1 fill-white" />
+                      Liked
+                    </>
+                  ) : (
+                    <>
+                      <Heart className="h-4 w-4 mr-1" />
+                      Like
+                    </>
+                  )}
+                </Button>
+              </div>
+            </motion.div>
+          ))}
         </div>
       ) : (
-        <>
-          {/* Results Count */}
-          <div className="mb-6 flex items-center justify-between">
-            <p className="text-gray-600 dark:text-gray-400">
-              Showing {filteredRecipes.length} of {recipes.length} recipes
-            </p>
-            
-            <div className="flex gap-2">
-              <Button variant="ghost" className="gap-1">
-                <Zap className="h-4 w-4" />
-                <span>Newest</span>
-              </Button>
-              <Button variant="ghost" className="gap-1">
-                <ThumbsUp className="h-4 w-4" />
-                <span>Most Liked</span>
-              </Button>
-            </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-8 text-center"
+        >
+          <div className="mx-auto w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+            <Globe className="h-8 w-8 text-gray-400 dark:text-gray-500" />
           </div>
-          
-          {/* Recipe Grid */}
-          {filteredRecipes.length > 0 ? (
-            <AnimatePresence>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredRecipes.map((recipe, index) => (
-                  <motion.div
-                    key={recipe.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    className="elegant-card overflow-hidden"
-                  >
-                    <div className="p-1">
-                      <div className="relative overflow-hidden rounded-t-lg h-48 bg-recipe-cream dark:bg-gray-700">
-                        <div className="absolute inset-0 bg-gradient-to-br from-recipe-cream/80 to-recipe-orange/30 dark:from-gray-800/80 dark:to-recipe-orange/20"></div>
-                        <div className="absolute inset-0 flex items-center justify-center text-4xl">
-                          🍳
-                        </div>
-                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
-                          <h3 className="text-white font-bold text-lg line-clamp-1">
-                            {recipe.name}
-                          </h3>
-                        </div>
-                      </div>
-                      
-                      <div className="p-5">
-                        {/* Recipe Info */}
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {recipe.cuisine && (
-                            <Badge className="bg-recipe-green">
-                              <Globe className="h-3 w-3 mr-1" />
-                              {recipe.cuisine}
-                            </Badge>
-                          )}
-                          
-                          {recipe.difficulty && (
-                            <Badge className="bg-recipe-orange capitalize">
-                              <ChefHat className="h-3 w-3 mr-1" />
-                              {recipe.difficulty}
-                            </Badge>
-                          )}
-                          
-                          {recipe.totalTime && (
-                            <Badge variant="outline">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {recipe.totalTime}
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        {/* Tags */}
-                        {recipe.tags && (recipe.tags as string[]).length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-4">
-                            {(recipe.tags as string[]).slice(0, 3).map((tag, i) => (
-                              <span 
-                                key={i} 
-                                className={`recipe-tag ${getTagColorClass(tag)}`}
-                              >
-                                #{tag}
-                              </span>
-                            ))}
-                            {(recipe.tags as string[]).length > 3 && (
-                              <span className="recipe-tag">
-                                +{(recipe.tags as string[]).length - 3} more
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        
-                        {/* Description */}
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2 min-h-[40px]">
-                          A delicious {recipe.cuisine} dish perfect for {recipe.difficulty === 'easy' ? 'beginners' : 'home cooks'}.
-                        </p>
-                        
-                        {/* Actions */}
-                        <div className="flex justify-between items-center mt-4">
-                          <Button 
-                            variant="outline" 
-                            className="gap-1 flex-1 mr-2"
-                            onClick={() => viewRecipeDetails(recipe)}
-                          >
-                            <BookOpen className="h-4 w-4" />
-                            <span>View</span>
-                          </Button>
-                          
-                          <Button 
-                            className="gap-1 flex-1 bg-recipe-green hover:bg-recipe-green/90"
-                            onClick={() => handleLikeRecipe(recipe)}
-                          >
-                            <Heart className="h-4 w-4" />
-                            <span>{recipe.likes || 0}</span>
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </AnimatePresence>
-          ) : (
-            <div className="text-center py-16 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5 }}
-              >
-                <div className="text-6xl mb-4">😢</div>
-                <h3 className="text-xl font-semibold mb-2">No recipes found</h3>
-                <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-                  We couldn't find any recipes matching your search criteria. Try adjusting your filters or search term.
-                </p>
-                <Button 
-                  className="mt-6 gap-2"
-                  onClick={clearFilters}
-                >
-                  <X className="h-4 w-4" />
-                  <span>Clear All Filters</span>
-                </Button>
-              </motion.div>
-            </div>
+          <h3 className="text-xl font-medium text-gray-800 dark:text-gray-200 mb-2">No recipes found</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            {searchQuery || cuisineFilters.length > 0 || difficultyFilters.length > 0 || tagFilters.length > 0
+              ? "No recipes match your current filters"
+              : "There are no published community recipes yet"}
+          </p>
+          {(searchQuery || cuisineFilters.length > 0 || difficultyFilters.length > 0 || tagFilters.length > 0) && (
+            <Button onClick={clearFilters} variant="outline">
+              <XCircle className="mr-2 h-4 w-4" />
+              Clear Filters
+            </Button>
           )}
-        </>
+        </motion.div>
       )}
     </div>
   );

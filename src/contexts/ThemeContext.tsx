@@ -1,63 +1,52 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
-interface ThemeContextType {
+type ThemeContextType = {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
-}
+};
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextType>({
+  isDarkMode: false,
+  toggleDarkMode: () => {},
+});
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+export const useTheme = () => useContext(ThemeContext);
+
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
   useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-    setIsDarkMode(savedDarkMode);
-    updateThemeClass(savedDarkMode);
+    // Check for saved theme preference or use system preference
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+      setIsDarkMode(true);
+      document.documentElement.classList.add('dark');
+    } else {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove('dark');
+    }
   }, []);
 
-  const updateThemeClass = (darkMode: boolean) => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      document.body.style.background = 'radial-gradient(circle at top, #1a2a3a 0%, #111927 100%)';
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.style.background = 'radial-gradient(circle at top, #f8fafc 0%, #e2e8f0 100%)';
-    }
-  };
-
   const toggleDarkMode = () => {
-    const newDarkMode = !isDarkMode;
-    setIsDarkMode(newDarkMode);
-    updateThemeClass(newDarkMode);
-    localStorage.setItem('darkMode', String(newDarkMode));
+    setIsDarkMode((prev) => {
+      const newValue = !prev;
+      if (newValue) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      }
+      return newValue;
+    });
   };
 
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleDarkMode }}>
-      <div className={`transition-colors duration-300 ${isDarkMode ? 'dark' : ''}`}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={isDarkMode ? 'dark' : 'light'}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+      {children}
     </ThemeContext.Provider>
   );
-}
-
-export const useTheme = () => {
-  const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
 };

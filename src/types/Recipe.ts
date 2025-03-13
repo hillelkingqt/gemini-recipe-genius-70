@@ -1,3 +1,4 @@
+
 export interface CulinaryTerm {
   term: string;
   definition: string;
@@ -45,7 +46,7 @@ export interface Recipe {
   calories?: string;
   notes: string;
   rating: number;
-  status: 'draft' | 'accepted' | 'rejected';
+  status: 'draft' | 'accepted' | 'rejected' | 'published';
   timeMarkers?: {
     step: number;
     duration: number;
@@ -63,6 +64,9 @@ export interface Recipe {
   };
   seasonality?: string[];
   cuisine?: string;
+  likes?: number;
+  author?: string;
+  publishedAt?: Date;
 }
 
 export interface RecipeRequest {
@@ -95,6 +99,8 @@ export interface UserProfile {
   healthGoals?: string[];
   profileNotes?: string;
   avatarUrl?: string;
+  updated_at?: string;
+  created_at?: string;
 }
 
 export interface CookingTip {
