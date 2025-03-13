@@ -19,7 +19,7 @@ const formatUsername = (email: string) => {
 };
 
 const UserProfilePage: React.FC = () => {
-  const { user, profile, updateUserProfile } = useAuth();
+  const { user, profile, updateProfile } = useAuth();
   const { toast } = useToast();
   
   const [formState, setFormState] = useState<Partial<UserProfile>>({
@@ -105,7 +105,7 @@ const UserProfilePage: React.FC = () => {
     setIsSaving(true);
     
     try {
-      await updateUserProfile({
+      await updateProfile({
         ...formState,
         updated_at: new Date().toISOString()
       });

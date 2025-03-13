@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,9 +13,11 @@ import { Navigation } from "./components/Navigation";
 import Chat from "./pages/Chat";
 import Auth from "./pages/Auth";
 import Recipes from "./pages/Recipes";
+import Community from "./pages/Community";
 import NotFound from "./pages/NotFound";
 import { motion, AnimatePresence } from "framer-motion";
 import ProtectedRoute from "./components/ProtectedRoute";
+import UserProfile from "./pages/UserProfile";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +75,26 @@ const AppRoutes = () => {
                         <ProtectedRoute>
                             <main className="max-w-7xl mx-auto pb-16">
                                 <Recipes />
+                            </main>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/community"
+                    element={
+                        <ProtectedRoute>
+                            <main className="max-w-7xl mx-auto pb-16">
+                                <Community />
+                            </main>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/profile"
+                    element={
+                        <ProtectedRoute>
+                            <main className="max-w-7xl mx-auto pb-16">
+                                <UserProfile />
                             </main>
                         </ProtectedRoute>
                     }

@@ -13,6 +13,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, username: string) => Promise<void>;
   signOut: () => Promise<void>;
   loading: boolean;
+  isLoading: boolean; // Add isLoading for compatibility
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   getProfile: () => Promise<void>;
   failedLoginAttempts: number;
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   signUp: async () => {},
   signOut: async () => {},
   loading: true,
+  isLoading: true, // Add isLoading default value
   updateProfile: async () => {},
   getProfile: async () => {},
   failedLoginAttempts: 0,
@@ -97,7 +99,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           favoriteIngredients: data.favorite_ingredients || [],
           dislikedIngredients: data.disliked_ingredients || [],
           preferredCuisines: data.preferred_cuisines || [],
-          cookingSkillLevel: data.cooking_skill_level || 'intermediate',
+          cookingSkillLevel: (data.cooking_skill_level as 'beginner' | 'intermediate' | 'advanced') || 'intermediate',
           healthGoals: data.health_goals || [],
           profileNotes: data.profile_notes || '',
           created_at: data.created_at,
@@ -203,9 +205,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         title: "Welcome Back!",
         description: "You've successfully signed in.",
       });
-      
-      return data;
-      
     } catch (error) {
       console.error('Error signing in:', error);
       
@@ -247,9 +246,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         title: "Account Created",
         description: "Your account has been successfully created. Please check your email for verification.",
       });
-      
-      return data;
-      
     } catch (error) {
       console.error('Error signing up:', error);
       
@@ -343,6 +339,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     signUp,
     signOut,
     loading,
+    isLoading: loading, // Add isLoading as an alias to loading
     updateProfile,
     getProfile,
     failedLoginAttempts,

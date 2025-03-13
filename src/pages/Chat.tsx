@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import ChatInterface from '@/components/ChatInterface';
-import { Recipe, RecipeResponse } from '@/types/Recipe';
+import { RecipeResponse } from '@/types/Recipe';
 import { useRecipes } from '@/hooks/useRecipes';
 import { useToast } from '@/components/ui/use-toast';
 import { CookingPot } from 'lucide-react';
@@ -16,11 +16,11 @@ const Chat: React.FC = () => {
   const handleRecipeGenerated = async (recipe: RecipeResponse) => {
     try {
       // Accept or save as draft based on recipe quality
-      const status = recipe.isRecipe ? 'accepted' : 'draft';
-      const newRecipe = await addRecipe({
+      const recipeWithStatus = {
         ...recipe,
-        status
-      });
+      };
+      
+      const newRecipe = await addRecipe(recipeWithStatus, recipe.isRecipe ? 'accepted' : 'draft');
       
       toast({
         title: "Recipe Saved!",
@@ -44,10 +44,11 @@ const Chat: React.FC = () => {
   const handleRecipeRejected = async (recipe: RecipeResponse) => {
     try {
       // Save rejected recipe with rejected status
-      await addRecipe({
+      const recipeWithStatus = {
         ...recipe,
-        status: 'rejected'
-      });
+      };
+      
+      await addRecipe(recipeWithStatus, 'rejected');
       
       toast({
         variant: "default",

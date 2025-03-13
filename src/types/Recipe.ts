@@ -161,4 +161,5 @@ export interface RecipeResponse {
   cuisine?: string;
   quickReplies?: QuickReply[];
   imageBase64?: string;
+  status?: 'draft' | 'accepted' | 'rejected' | 'published';
 }

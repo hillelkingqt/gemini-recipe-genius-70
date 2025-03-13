@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { CookingPot, MessageSquare, Moon, Sun, Menu, X, LogOut, UserCircle } from 'lucide-react';
+import { CookingPot, MessageSquare, Moon, Sun, Menu, X, LogOut, UserCircle, Users } from 'lucide-react';
 import { Button } from './ui/button';
 import { motion } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -88,6 +88,16 @@ export const Navigation = () => {
                     Recipes
                   </Button>
                 </Link>
+
+                <Link to="/community">
+                  <Button 
+                    variant={location.pathname === '/community' ? 'default' : 'ghost'}
+                    className="flex items-center gap-2 font-medium dark:text-white dark:hover:bg-gray-800 glass-effect"
+                  >
+                    <Users className="h-5 w-5" />
+                    Community
+                  </Button>
+                </Link>
               </>
             )}
             
@@ -113,6 +123,12 @@ export const Navigation = () => {
                     {profile?.username || user.email}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => { }}>
+                    <Link to="/profile" className="flex items-center w-full">
+                      <UserCircle className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => signOut()}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign out</span>
@@ -189,6 +205,36 @@ export const Navigation = () => {
                   <div className="flex items-center">
                     <CookingPot className="h-5 w-5 mr-2" />
                     Recipes
+                  </div>
+                </Link>
+
+                <Link 
+                  to="/community"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    location.pathname === '/community' 
+                      ? 'bg-recipe-green text-white' 
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <Users className="h-5 w-5 mr-2" />
+                    Community
+                  </div>
+                </Link>
+
+                <Link 
+                  to="/profile"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    location.pathname === '/profile' 
+                      ? 'bg-recipe-green text-white' 
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <UserCircle className="h-5 w-5 mr-2" />
+                    Profile
                   </div>
                 </Link>
                 

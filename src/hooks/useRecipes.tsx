@@ -88,7 +88,7 @@ export const useRecipes = () => {
     }
   };
 
-  const addRecipe = async (recipe: Omit<Recipe, 'id' | 'notes' | 'rating' | 'status' | 'createdAt' | 'isFavorite'>, status = 'accepted') => {
+  const addRecipe = async (recipe: Omit<Recipe, 'id' | 'notes' | 'rating' | 'status' | 'createdAt' | 'isFavorite'> & { status?: 'draft' | 'accepted' | 'rejected' | 'published' }, status = 'accepted') => {
     if (!user) throw new Error('User must be logged in');
     
     try {
@@ -110,7 +110,7 @@ export const useRecipes = () => {
           calories: recipe.calories,
           notes: '',
           rating: 0,
-          status: status,
+          status: recipe.status || status,
           time_markers: recipe.timeMarkers,
           prep_time: recipe.prepTime,
           cook_time: recipe.cookTime,
