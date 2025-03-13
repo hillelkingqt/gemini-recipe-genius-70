@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -130,6 +130,42 @@ const Community: React.FC = () => {
       });
       return;
     }
+      const handleFavoriteToggle = async (recipe: Recipe) => {
+          if (!user) {
+              toast({
+                  variant: "default",
+                  title: "Login Required",
+                  description: "Please login to favorite recipes",
+              });
+              return;
+          }
+
+          const isFavoriteBefore = !!recipes.find(r => r.id === recipe.id)?.isFavorite;
+          const updatedRecipes = recipes.map(r =>
+              r.id === recipe.id ? { ...r, isFavorite: !isFavoriteBefore } : r
+          );
+          setRecipes(updatedRecipes);
+
+
+          try {
+              await toggleFavorite(recipe.id);
+              toast({
+                  variant: "default",
+                  title: recipe.isFavorite ? "Removed from Favorites" : "Added to Favorites",
+                  description: recipe.isFavorite ? `"${recipe.name}" has been removed from your favorites.` : `"${recipe.name}" has been added to your favorites.`,
+              });
+
+          } catch (error) {
+              console.error('Error toggling favorite:', error);
+              toast({
+                  variant: "destructive",
+                  title: "Action Failed",
+                  description: "There was an error processing your request."
+              });
+              // Revert optimistic update on error
+              setRecipes(recipes.map(r => r.id === recipe.id ? { ...r, isFavorite: isFavoriteBefore } : r));
+          }
+      };
     
     try {
       // Check if user has already liked this recipe
@@ -194,9 +230,83 @@ const Community: React.FC = () => {
     }
   };
   
-  const handleViewRecipe = (recipeId: string) => {
-    navigate(`/recipes?id=${recipeId}`);
-  };
+    const handleViewRecipe = async (recipeId: string) => {
+        const recipeToView = recipes.find(r => r.id === recipeId);
+        if (!recipeToView || !user) return;
+
+        // אם זה המתכון של המשתמש עצמו – פשוט תעביר אותו ישירות
+        if (recipeToView.user_id === user.id) {
+            navigate(`/recipes?id=${recipeToView.id}`);
+            return;
+        }
+
+        // אחרת – תעתיק אותו ותעביר אותו לעותק
+        const {
+            name,
+            ingredients,
+            instructions,
+            isRTL,
+            ingredientsLabel,
+            instructionsLabel,
+            isRecipe,
+            content,
+            tags,
+            difficulty,
+            estimatedTime,
+            calories,
+            rating,
+            timeMarkers,
+            prepTime,
+            cookTime,
+            totalTime,
+            servings,
+            nutritionInfo,
+            seasonality,
+            cuisine,
+            imageBase64,
+        } = recipeToView;
+
+        const { data, error } = await supabase.from("recipes").insert({
+            name,
+            ingredients,
+            instructions,
+            is_rtl: isRTL,
+            ingredients_label: ingredientsLabel,
+            instructions_label: instructionsLabel,
+            is_recipe: isRecipe,
+            content,
+            tags,
+            difficulty,
+            estimated_time: estimatedTime,
+            calories,
+            rating,
+            time_markers: timeMarkers,
+            prep_time: prepTime,
+            cook_time: cookTime,
+            total_time: totalTime,
+            servings,
+            nutrition_info: nutritionInfo,
+            seasonality,
+            cuisine,
+            image_base64: imageBase64,
+            user_id: user.id,
+            status: 'draft',
+            created_at: new Date().toISOString()
+        }).select().single();
+
+        if (error || !data) {
+            toast({
+                title: "Error",
+                description: "Failed to copy recipe",
+                variant: "destructive"
+            });
+            console.error(error);
+            return;
+        }
+
+        navigate(`/recipes?id=${data.id}`);
+    };
+
   
   // Apply search and filters
   useEffect(() => {
@@ -435,42 +545,63 @@ const Community: React.FC = () => {
                     className="relative border rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-300"
                   >
                     <div className="group" onClick={() => handleViewRecipe(recipe.id)}>
-                      <RecipeCard
-                        recipe={recipe}
-                        showActions={false}
-                        onEdit={() => {}}
-                        onDelete={() => {}}
-                        className="cursor-pointer"
-                      />
+                            <RecipeCard
+                                recipe={recipe}
+                                showActions={false}
+                                onEdit={() => { }}
+                                onDelete={() => { }}
+                                className="cursor-pointer"
+                                onFavoriteToggle={() => handleFavoriteToggle(recipe)} // ADD THIS LINE
+                            />
                       <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
                     
-                    <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 border-t">
-                      <div className="flex items-center">
-                        <ThumbsUp className="h-4 w-4 mr-1 text-recipe-green" />
-                        <span className="text-sm">{recipe.likes || 0}</span>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        {recipe.author && (
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
-                            by {recipe.author}
-                          </span>
-                        )}
-                        
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleLikeRecipe(recipe);
-                          }}
-                          className="text-recipe-green hover:text-recipe-green/80"
-                        >
-                          <Heart className={`h-5 w-5 ${recipe.likes ? 'fill-recipe-green' : ''}`} />
-                        </Button>
-                      </div>
-                    </div>
+                        <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 border-t">
+                            <div className="flex items-center">
+                                <ThumbsUp className="h-4 w-4 mr-1 text-recipe-green" />
+                                <span className="text-sm">{recipe.likes || 0}</span>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                {recipe.author && (
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                                        by {recipe.author}
+                                    </span>
+                                )}
+
+                                {/* כפתור לייק */}
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleLikeRecipe(recipe);
+                                    }}
+                                    className="text-recipe-green hover:text-recipe-green/80"
+                                >
+                                    <ThumbsUp className="h-5 w-5" />
+                                </Button>
+
+                                {/* כפתור לב (פייבוריט) */}
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        // כאן אפשר להוסיף handleFavoriteToggle או להעתיק מ־RecipeCard.tsx
+                                        // כרגע נעשה טוסט:
+                                        toast({
+                                            title: 'Coming soon',
+                                            description: 'Favorite feature in community is not implemented yet',
+                                        });
+                                    }}
+                                    className="text-red-500 hover:text-red-400"
+                                >
+                                    <Heart className={`h-5 w-5 ${recipe.isFavorite ? 'fill-red-500' : ''}`} />
+                                </Button>
+                            </div>
+                        </div>
+
                   </motion.div>
                 ))}
               </AnimatePresence>

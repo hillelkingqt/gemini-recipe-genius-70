@@ -426,7 +426,62 @@ export const useRecipes = () => {
         description: "There was an error deleting your recipe."
       });
     }
-  };
+    };
+    const fetchPublishedRecipes = async (): Promise<Recipe[]> => {
+        try {
+            const { data, error } = await supabase
+                .from('recipes')
+                .select('*')
+                .eq('status', 'published')
+                .order('published_at', { ascending: false });
+
+            if (error) throw error;
+
+            const publicRecipes: Recipe[] = data.map(item => ({
+                id: item.id,
+                name: item.name,
+                ingredients: item.ingredients as string[] || [],
+                instructions: item.instructions as string[] || [],
+                createdAt: new Date(item.created_at),
+                isRTL: item.is_rtl || false,
+                ingredientsLabel: item.ingredients_label || 'Ingredients',
+                instructionsLabel: item.instructions_label || 'Instructions',
+                isRecipe: item.is_recipe ?? true,
+                content: item.content || '',
+                isFavorite: item.is_favorite || false,
+                tags: item.tags as string[] || [],
+                difficulty: ['easy', 'medium', 'hard'].includes(item.difficulty)
+                    ? item.difficulty as 'easy' | 'medium' | 'hard'
+                    : 'medium',
+                estimatedTime: item.estimated_time || '',
+                calories: item.calories || '',
+                notes: item.notes || '',
+                rating: item.rating || 0,
+                status: ['draft', 'accepted', 'rejected', 'published'].includes(item.status)
+                    ? item.status as 'draft' | 'accepted' | 'rejected' | 'published'
+                    : 'accepted',
+                timeMarkers: item.time_markers as { step: number; duration: number; description: string; }[] || [],
+                prepTime: item.prep_time || '',
+                cookTime: item.cook_time || '',
+                totalTime: item.total_time || '',
+                servings: item.servings || 0,
+                nutritionInfo: item.nutrition_info as { calories?: string; protein?: string; carbs?: string; fat?: string; } || {},
+                seasonality: item.seasonality as string[] || [],
+                cuisine: item.cuisine || '',
+                likes: item.likes || 0,
+                publishedAt: item.published_at ? new Date(item.published_at) : undefined,
+                author: item.author || '',
+                imageBase64: item.image_base64 || '',
+            }));
+
+
+            return publicRecipes;
+        } catch (error) {
+            console.error('Error fetching published recipes:', error);
+            return [];
+        }
+    };
+
 
   return {
     recipes,
@@ -440,5 +495,6 @@ export const useRecipes = () => {
     publishRecipe,
     unpublishRecipe,
     rateRecipe,
+    fetchPublishedRecipes,
   };
 };

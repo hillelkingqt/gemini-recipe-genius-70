@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Recipe } from '@/types/Recipe';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Printer, Download, Heart, Star, Clock, Tag, FileText, ShoppingBag, Edit, Save, AlarmClock, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Heart, Star, Clock, Tag, FileText, ShoppingBag, Edit, Save, AlarmClock, PlayCircle, Send } from 'lucide-react';
 import { exportToPdf } from '@/utils/pdfExport';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,19 +17,33 @@ import { toast } from '@/hooks/use-toast';
 interface RecipeDetailProps {
     recipe: Recipe;
     onToggleFavorite?: (id: string) => void;
-    onRate?: (id: string, rating: number) => void;
+    onRate?: (id: string, rating: number) => Promise<void>;
+    onFavoriteToggle?: (id: string) => Promise<void>;
     onUpdateNotes?: (id: string, notes: string) => void;
-    onCloseDetail?: () => void; // <-- הוסף את הפרופ הזה
+    onCloseDetail?: () => void;
+
+    // נוסיף עכשיו:
+    onDelete?: (id: string) => Promise<void>;
+    onUpdate?: (id: string, updates: Partial<Recipe>) => Promise<void>;
+    onPublish?: (id: string) => Promise<void>;
+    onUnpublish?: (id: string) => Promise<void>;
 }
 
 
-const RecipeDetail: React.FC<RecipeDetailProps> = ({ 
-  recipe,
-  onToggleFavorite,
-  onRate,
-  onUpdateNotes,
-  onCloseDetail
+
+
+const RecipeDetail: React.FC<RecipeDetailProps> = ({
+    recipe,
+    onFavoriteToggle,
+    onRate,
+    onUpdateNotes,
+    onCloseDetail,
+    onDelete,
+    onUpdate,
+    onPublish,
+    onUnpublish
 }) => {
+
   const navigate = useNavigate();
   const isRTL = recipe.isRTL || false;
   const ingredientsLabel = recipe.ingredientsLabel || 'Ingredients';
@@ -185,17 +199,52 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
     setIsEditingNotes(false);
   };
   
-  const handleToggleFavorite = () => {
-    if (onToggleFavorite) {
-      onToggleFavorite(recipe.id);
-    }
-  };
+    const [favorite, setFavorite] = useState(recipe.isFavorite || false);
+
+    const handleToggleFavorite = () => {
+        const next = !favorite;
+        setFavorite(next); // עדכון מיידי בממשק
+
+        if (onFavoriteToggle) {
+            onFavoriteToggle(recipe.id).catch(() => {
+                setFavorite(!next); // חזרה אם הבקשה נכשלה
+                toast.error("Failed to update favorite");
+            });
+        }
+    };
+
+
+    const [currentRating, setCurrentRating] = useState(recipe.rating || 0);
+
   
-  const handleRate = (rating: number) => {
-    if (onRate) {
-      onRate(recipe.id, rating);
-    }
-  };
+    const handleRate = (rating: number) => {
+        setCurrentRating(rating); // מיידי
+
+        onRate?.(recipe.id, rating)
+            .then(() => {
+                toast({
+                    title: "Recipe Rated",
+                    description: "Your rating has been saved",
+                    variant: "default"
+                });
+            })
+            .catch(() => {
+                toast({
+                    title: "Error",
+                    description: "Failed to save rating",
+                    variant: "destructive"
+                });
+                // 👇 זה שגוי אם recipe.rating לא עודכן מהשרת – הוא לא מחזיר את הדירוג החדש
+                // לכן אפשר או:
+                // א. לוותר על זה
+                // ב. או לעדכן אותו מ־recipes
+
+                // אופציה א – פשוט תוריד את השורה:
+                // setCurrentRating(recipe.rating);
+            });
+    };
+
+
   
   const generateShoppingList = () => {
     const list = recipe.ingredients.map(ingredient => `- ${ingredient}`).join('\n');
@@ -438,16 +487,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
                           </Button>
 
             
-            <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} space-x-2`}>
-              <Button
-                variant="outline"
-                onClick={handlePrint}
-                className="text-recipe-green border-recipe-green hover:bg-recipe-green/10 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-900/30"
-              >
-                <Printer className="h-4 w-4 mr-2" />
-                {isRTL ? 'הדפסה' : 'Print'}
-              </Button>
-              
+            <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} space-x-2`}>          
               <Button
                 variant="outline"
                 onClick={handleExportPdf}
@@ -456,6 +496,18 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
                 <Download className="h-4 w-4 mr-2" />
                 {isRTL ? 'פתח בחלון חדש' : 'Open in New Window'}
               </Button>
+
+                              {onPublish && (
+                                  <Button
+                                      variant="outline"
+                                      onClick={() => onPublish(recipe.id)}
+                                      className="text-blue-600 border-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-700 dark:hover:bg-blue-900/30"
+                                  >
+                                      <Send className="h-4 w-4 mr-2" />
+                                      {isRTL ? 'פרסם' : 'Publish'}
+                                  </Button>
+                              )}
+
               
               <Button
                 variant="outline"
@@ -490,7 +542,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
                 className="text-gray-400 hover:text-red-500 transition-colors focus:outline-none dark:text-gray-500 dark:hover:text-red-400"
                 aria-label={recipe.isFavorite ? "Remove from favorites" : "Add to favorites"}
               >
-                <Heart className={`h-6 w-6 ${recipe.isFavorite ? 'fill-red-500 text-red-500 dark:fill-red-400 dark:text-red-400' : ''}`} />
+                                  <Heart className={`h-6 w-6 ${favorite ? 'fill-red-500 text-red-500 dark:fill-red-400 dark:text-red-400' : ''}`} />
               </motion.button>
               
               <div className="flex">
@@ -500,9 +552,10 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
                     onClick={() => handleRate(star)}
                     className="focus:outline-none"
                   >
-                    <Star 
-                      className={`h-6 w-6 ${recipe.rating >= star ? 'fill-yellow-400 text-yellow-400 dark:fill-yellow-300 dark:text-yellow-300' : 'text-gray-300 dark:text-gray-600'}`} 
-                    />
+                        <Star
+                            className={`h-6 w-6 ${currentRating >= star ? 'fill-yellow-400 text-yellow-400 dark:fill-yellow-300 dark:text-yellow-300' : 'text-gray-300 dark:text-gray-600'}`}
+                        />
+
                   </button>
                 ))}
               </div>
