@@ -67,6 +67,7 @@ export interface Recipe {
   likes?: number;
   author?: string;
   publishedAt?: Date;
+  imageBase64?: string;
 }
 
 export interface RecipeRequest {
@@ -159,4 +160,5 @@ export interface RecipeResponse {
   seasonality?: string[];
   cuisine?: string;
   quickReplies?: QuickReply[];
+  imageBase64?: string;
 }

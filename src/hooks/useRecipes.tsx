@@ -34,8 +34,8 @@ export const useRecipes = () => {
         return {
           id: recipe.id,
           name: recipe.name,
-          ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
-          instructions: Array.isArray(recipe.instructions) ? recipe.instructions : [],
+          ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients.map(item => String(item)) : [],
+          instructions: Array.isArray(recipe.instructions) ? recipe.instructions.map(item => String(item)) : [],
           createdAt: new Date(recipe.created_at),
           isRTL: recipe.is_rtl,
           ingredientsLabel: recipe.ingredients_label,
@@ -43,7 +43,7 @@ export const useRecipes = () => {
           isRecipe: recipe.is_recipe,
           content: recipe.content,
           isFavorite: recipe.is_favorite || false,
-          tags: Array.isArray(recipe.tags) ? recipe.tags : [],
+          tags: Array.isArray(recipe.tags) ? recipe.tags.map(tag => String(tag)) : [],
           difficulty: recipe.difficulty as 'easy' | 'medium' | 'hard',
           estimatedTime: recipe.estimated_time,
           calories: recipe.calories,
@@ -56,7 +56,7 @@ export const useRecipes = () => {
           totalTime: recipe.total_time,
           servings: typeof recipe.servings === 'number' ? recipe.servings : 4,
           nutritionInfo: recipe.nutrition_info || {},
-          seasonality: Array.isArray(recipe.seasonality) ? recipe.seasonality : [],
+          seasonality: Array.isArray(recipe.seasonality) ? recipe.seasonality.map(season => String(season)) : [],
           cuisine: recipe.cuisine,
           likes: recipe.likes || 0,
         };
@@ -77,7 +77,7 @@ export const useRecipes = () => {
   };
   
   // Add a recipe to Supabase
-  const addRecipe = async (recipe: Omit<Recipe, 'id' | 'createdAt' | 'isFavorite' | 'rating' | 'notes' | 'status'>): Promise<Recipe> => {
+  const addRecipe = async (recipe: Omit<Recipe, 'id' | 'createdAt' | 'isFavorite' | 'rating' | 'notes' | 'status'>, status = 'accepted'): Promise<Recipe> => {
     if (!user) throw new Error('User not authenticated');
     
     try {
@@ -106,7 +106,7 @@ export const useRecipes = () => {
           seasonality: recipe.seasonality || [],
           cuisine: recipe.cuisine || '',
           user_id: user.id,
-          status: 'accepted',
+          status: status,
         })
         .select()
         .single();
@@ -118,8 +118,8 @@ export const useRecipes = () => {
       const newRecipe: Recipe = {
         id: data.id,
         name: data.name,
-        ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
-        instructions: Array.isArray(data.instructions) ? data.instructions : [],
+        ingredients: Array.isArray(data.ingredients) ? data.ingredients.map(item => String(item)) : [],
+        instructions: Array.isArray(data.instructions) ? data.instructions.map(item => String(item)) : [],
         createdAt: new Date(data.created_at),
         isRTL: data.is_rtl,
         ingredientsLabel: data.ingredients_label,
@@ -127,7 +127,7 @@ export const useRecipes = () => {
         isRecipe: data.is_recipe,
         content: data.content,
         isFavorite: data.is_favorite || false,
-        tags: Array.isArray(data.tags) ? data.tags : [],
+        tags: Array.isArray(data.tags) ? data.tags.map(tag => String(tag)) : [],
         difficulty: data.difficulty as 'easy' | 'medium' | 'hard',
         estimatedTime: data.estimated_time,
         calories: data.calories,
@@ -140,7 +140,7 @@ export const useRecipes = () => {
         totalTime: data.total_time,
         servings: typeof data.servings === 'number' ? data.servings : 4,
         nutritionInfo: data.nutrition_info || {},
-        seasonality: Array.isArray(data.seasonality) ? data.seasonality : [],
+        seasonality: Array.isArray(data.seasonality) ? data.seasonality.map(season => String(season)) : [],
         cuisine: data.cuisine,
         likes: 0,
       };
@@ -295,6 +295,76 @@ export const useRecipes = () => {
     }
   };
 
+  // Add or update note for a recipe
+  const addNote = async (id: string, note: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('recipes')
+        .update({ notes: note })
+        .eq('id', id)
+        .eq('user_id', user.id);
+        
+      if (error) {
+        throw error;
+      }
+      
+      setRecipes((prev) =>
+        prev.map((r) =>
+          r.id === id ? { ...r, notes: note } : r
+        )
+      );
+      
+      toast({
+        title: 'Note saved',
+        description: 'Your note has been saved to the recipe',
+      });
+    } catch (error) {
+      console.error('Error saving note:', error);
+      toast({
+        title: 'Failed to save note',
+        description: 'Please try again later',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Rate a recipe
+  const rateRecipe = async (id: string, rating: number) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('recipes')
+        .update({ rating })
+        .eq('id', id)
+        .eq('user_id', user.id);
+        
+      if (error) {
+        throw error;
+      }
+      
+      setRecipes((prev) =>
+        prev.map((r) =>
+          r.id === id ? { ...r, rating } : r
+        )
+      );
+      
+      toast({
+        title: 'Rating saved',
+        description: `You've rated this recipe ${rating} stars`,
+      });
+    } catch (error) {
+      console.error('Error rating recipe:', error);
+      toast({
+        title: 'Failed to save rating',
+        description: 'Please try again later',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Publish a recipe to the community
   const publishRecipe = async (id: string) => {
     if (!user) return;
@@ -382,6 +452,8 @@ export const useRecipes = () => {
     deleteRecipe,
     toggleFavorite,
     publishRecipe,
-    unpublishRecipe
+    unpublishRecipe,
+    addNote,
+    rateRecipe
   };
 };

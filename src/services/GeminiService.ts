@@ -1,3 +1,4 @@
+
 import { RecipeRequest, RecipeResponse } from "../types/Recipe";
 import { getRandomApiKey } from "./ApiKeyManager";
 
@@ -92,7 +93,15 @@ I've included an image with this request. Please analyze the image and:
     if (userPreferences) {
       fullPrompt += `
 Please consider these user preferences when creating the recipe:
-${Object.entries(userPreferences).map(([key, value]) => `- ${key}: ${value}`).join('\n')}
+${Object.entries(userPreferences)
+  .filter(([_, value]) => value !== undefined && value !== null && value.length > 0)
+  .map(([key, value]) => {
+    if (Array.isArray(value)) {
+      return `- ${key}: ${value.join(', ')}`;
+    }
+    return `- ${key}: ${value}`;
+  })
+  .join('\n')}
 `;
     }
 
