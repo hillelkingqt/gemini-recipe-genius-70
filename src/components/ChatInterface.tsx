@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Send, Check, X, Edit, AlertCircle } from 'lucide-react';
+import { Loader2, Send, Check, X, Edit, AlertCircle, Image, Plus, Trash2 } from 'lucide-react';
 import { geminiService } from '@/services/GeminiService';
 import { RecipeResponse } from '@/types/Recipe';
 import { useToast } from '@/components/ui/use-toast';
 import RecipeCard from './RecipeCard';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/hooks/useAuth';
 
 interface QuickReply {
   text: string;
@@ -19,6 +20,7 @@ interface Message {
   text: string;
   sender: 'user' | 'ai';
   isRTL?: boolean;
+  imageUrl?: string;
   quickReplies?: QuickReply[];
 }
 
@@ -38,10 +40,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [editRequest, setEditRequest] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingInProgress, setIsEditingInProgress] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const [persistedMessages, setPersistedMessages] = useState<Message[]>([]);
+  const { profile } = useAuth();
   
   useEffect(() => {
     const savedMessages = localStorage.getItem('chat_messages');
@@ -53,7 +58,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setMessages([
         {
           id: '1',
-          text: "Hello! I'm your Recipe Assistant. Tell me what kind of recipe you're looking for, and I'll create it for you. For example, try: 'I want a simple pasta recipe with mushrooms and garlic'.",
+          text: "Hello! I'm your Recipe Assistant. Tell me what kind of recipe you're looking for, and I'll create it for you. You can also upload an image of food or ingredients and I'll create a recipe based on it!",
           sender: 'ai'
         }
       ]);
@@ -71,7 +76,37 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (generatedRecipe) {
       localStorage.setItem('current_recipe', JSON.stringify(generatedRecipe));
     }
+    
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, generatedRecipe]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setSelectedImage(reader.result);
+          setImagePreview(reader.result);
+        }
+      };
+      
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const clearPersistedChat = () => {
     localStorage.removeItem('chat_messages');
@@ -79,22 +114,44 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
   
   const handleSendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() && !selectedImage) {
+      toast({
+        title: "Message required",
+        description: "Please enter a message or prompt to send.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     const userMessage: Message = {
       id: Date.now().toString(),
       text: input,
       sender: 'user',
-      isRTL: detectLanguage(input) === 'he'
+      isRTL: detectLanguage(input) === 'he',
+      imageUrl: imagePreview || undefined
     };
+    
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
     
     try {
+      const userPreferences = profile ? {
+        dietaryRestrictions: profile.dietaryRestrictions,
+        allergies: profile.allergies,
+        favoriteIngredients: profile.favoriteIngredients,
+        dislikedIngredients: profile.dislikedIngredients,
+        preferredCuisines: profile.preferredCuisines,
+        cookingSkillLevel: profile.cookingSkillLevel,
+        healthGoals: profile.healthGoals,
+        notes: profile.profileNotes
+      } : undefined;
+      
       const recipe = await geminiService.generateRecipe({
         prompt: input,
-        language: detectLanguage(input)
+        language: detectLanguage(input),
+        imageBase64: selectedImage || undefined,
+        userPreferences
       });
       
       const aiMessage: Message = {
@@ -110,6 +167,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       if (recipe.isRecipe) {
         setGeneratedRecipe(recipe);
       }
+      
+      setSelectedImage(null);
+      setImagePreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
     } catch (error) {
       console.error('Error generating recipe:', error);
       const errorMessage: Message = {
@@ -284,7 +348,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
         }}
       >
+        {message.imageUrl && (
+          <div className="mb-3">
+            <img 
+              src={message.imageUrl} 
+              alt="Uploaded" 
+              className="rounded-lg max-h-64 w-auto object-contain mb-2"
+            />
+          </div>
+        )}
+        
         {message.text}
+        
         {message.sender === 'ai' && message.quickReplies && message.quickReplies.length > 0 && (
           <motion.div 
             className="flex flex-wrap gap-2 mt-3"
@@ -327,13 +402,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </AnimatePresence>
         
         {generatedRecipe && (
-<motion.div 
-  className="recipe-section mt-6 p-6 bg-recipe-cream dark:bg-gray-800 rounded-xl shadow-lg"
-  initial={{ opacity: 0, scale: 0.95 }}
-  animate={{ opacity: 1, scale: 1 }}
-  transition={{ duration: 0.4 }}
->
-
+          <motion.div 
+            className="recipe-section mt-6 p-6 bg-recipe-cream dark:bg-gray-800 rounded-xl shadow-lg"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+          >
             <RecipeCard 
               recipe={generatedRecipe}
               showActions={false}
@@ -423,31 +497,76 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         )}
       </div>
       
-          <div className="p-6 bg-white dark:bg-gray-800 border-t dark:border-gray-700 shadow-inner">
-              <div className="max-w-3xl mx-auto flex space-x-2">
-                  <Input
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder="Describe a recipe you'd like me to create..."
-                      onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
-                      disabled={isLoading}
-                      className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-black dark:text-white"
-                      dir={detectLanguage(input) === 'he' ? 'rtl' : 'ltr'}
-                  />
-                  <Button
-                      onClick={handleSendMessage}
-                      disabled={isLoading || !input.trim()}
-                      className="bg-recipe-green hover:bg-recipe-green/90 flex-shrink-0 min-w-[50px]"
-                  >
-                      {isLoading ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                          <Send className="h-5 w-5" />
-                      )}
-                  </Button>
+      <div className="p-6 bg-white dark:bg-gray-800 border-t dark:border-gray-700 shadow-inner">
+        <div className="max-w-3xl mx-auto">
+          {imagePreview && (
+            <motion.div 
+              className="mb-4 relative"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="relative inline-block">
+                <img 
+                  src={imagePreview} 
+                  alt="Upload preview" 
+                  className="h-24 object-cover rounded-lg border-2 border-recipe-green"
+                />
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="absolute -top-2 -right-2 rounded-full p-0 h-6 w-6"
+                  onClick={handleRemoveImage}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
               </div>
+            </motion.div>
+          )}
+          
+          <div className="flex space-x-2">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileSelect} 
+              accept="image/*" 
+              className="hidden" 
+            />
+            
+            <Button
+              onClick={handleImageButtonClick}
+              variant="outline"
+              className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
+              disabled={isLoading}
+              title="Upload Image"
+            >
+              <Image className="h-5 w-5" />
+            </Button>
+            
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Describe a recipe you'd like me to create..."
+              onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
+              disabled={isLoading}
+              className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-black dark:text-white"
+              dir={detectLanguage(input) === 'he' ? 'rtl' : 'ltr'}
+            />
+            
+            <Button
+              onClick={handleSendMessage}
+              disabled={isLoading || (!input.trim() && !selectedImage)}
+              className="bg-recipe-green hover:bg-recipe-green/90 flex-shrink-0 min-w-[50px]"
+            >
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
+            </Button>
           </div>
-
+        </div>
+      </div>
     </div>
   );
 };

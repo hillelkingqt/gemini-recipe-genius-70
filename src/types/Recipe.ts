@@ -1,4 +1,3 @@
-
 export interface CulinaryTerm {
   term: string;
   definition: string;
@@ -69,6 +68,33 @@ export interface Recipe {
 export interface RecipeRequest {
   prompt: string;
   language?: string;
+  imageBase64?: string;
+  userPreferences?: UserPreferences;
+}
+
+export interface UserPreferences {
+  dietaryRestrictions?: string[];
+  allergies?: string[];
+  favoriteIngredients?: string[];
+  dislikedIngredients?: string[];
+  preferredCuisines?: string[];
+  cookingSkillLevel?: 'beginner' | 'intermediate' | 'advanced';
+  healthGoals?: string[];
+  notes?: string;
+}
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  dietaryRestrictions?: string[];
+  allergies?: string[];
+  favoriteIngredients?: string[];
+  dislikedIngredients?: string[];
+  preferredCuisines?: string[];
+  cookingSkillLevel?: 'beginner' | 'intermediate' | 'advanced';
+  healthGoals?: string[];
+  profileNotes?: string;
+  avatarUrl?: string;
 }
 
 export interface CookingTip {
@@ -128,4 +154,3 @@ export interface RecipeResponse {
   cuisine?: string;
   quickReplies?: QuickReply[];
 }
-

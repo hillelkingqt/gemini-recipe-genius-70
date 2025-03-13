@@ -1,6 +1,6 @@
 import { RecipeRequest, RecipeResponse } from "../types/Recipe";
+import { getRandomApiKey } from "./ApiKeyManager";
 
-const GOOGLE_API_KEY = "AIzaSyA2KjqBCn4oT8s5s6WUB1VOVfVO_eI4rXA";
 const MODEL_NAME = "gemini-2.0-flash-thinking-exp";
 
 export class GeminiService {
@@ -8,13 +8,41 @@ export class GeminiService {
   private modelName: string;
 
   constructor() {
-    this.apiKey = GOOGLE_API_KEY;
+    this.apiKey = getRandomApiKey();
     this.modelName = MODEL_NAME;
   }
 
   async generateRecipe(request: RecipeRequest): Promise<RecipeResponse> {
     try {
+      this.apiKey = getRandomApiKey();
+      
       const prompt = this.createPrompt(request);
+      const requestBody: any = {
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 4096,
+        },
+      };
+
+      if (request.imageBase64) {
+        requestBody.contents[0].parts.push({
+          inline_data: {
+            mime_type: "image/jpeg",
+            data: request.imageBase64.split(',')[1]
+          }
+        });
+      }
       
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${this.apiKey}`,
@@ -23,23 +51,7 @@ export class GeminiService {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt,
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.7,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 4096,
-            },
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
@@ -58,15 +70,33 @@ export class GeminiService {
   }
 
   private createPrompt(request: RecipeRequest): string {
-    const { prompt, language = 'en' } = request;
+    const { prompt, language = 'en', userPreferences } = request;
     const isHebrew = language === 'he';
     
-    return `
+    let fullPrompt = `
 You are a professional chef specialized in creating detailed recipes.
 Create a recipe based on this request: "${prompt}"
 
 ${isHebrew ? "Please respond in Hebrew, following RTL (right-to-left) text direction." : "Please respond in English."}
+`;
 
+    if (request.imageBase64) {
+      fullPrompt += `
+I've included an image with this request. Please analyze the image and:
+- If it shows food or ingredients, create a recipe based on what you see
+- If it shows a written recipe, transcribe it and format it properly
+- Consider the image as an important part of the context when creating the recipe
+`;
+    }
+
+    if (userPreferences) {
+      fullPrompt += `
+Please consider these user preferences when creating the recipe:
+${Object.entries(userPreferences).map(([key, value]) => `- ${key}: ${value}`).join('\n')}
+`;
+    }
+
+    fullPrompt += `
 Please provide:
 - Detailed ingredients with quantities
 - Step-by-step instructions
@@ -152,13 +182,13 @@ If the user is NOT asking for a recipe or food-related content, respond with:
 The recipe should be detailed and professional.
 Do not add any text, formatting, or explanation outside the JSON.
 The JSON must be valid and parseable.`;
+    return fullPrompt;
   }
 
   private parseRecipeResponse(response: any, language: string): RecipeResponse {
     try {
       console.log('Raw API response:', response);
       
-      // Check if we have content in the response
       if (!response.candidates || 
           !response.candidates[0] || 
           !response.candidates[0].content ||
@@ -171,7 +201,6 @@ The JSON must be valid and parseable.`;
       const content = response.candidates[0].content.parts[0].text;
       console.log('Response content:', content);
       
-      // Try to find a JSON object in the response - more robust regex
       const jsonRegex = /\{[\s\S]*\}/g;
       const jsonMatch = content.match(jsonRegex);
       
@@ -186,14 +215,12 @@ The JSON must be valid and parseable.`;
       try {
         const parsedResult = JSON.parse(jsonStr);
         
-        // Detect Hebrew content automatically for better RTL handling
         const containsHebrew = (text: string) => /[\u0590-\u05FF]/.test(text);
         const isHebrewRecipe = containsHebrew(parsedResult.name) || 
                                (parsedResult.ingredients?.some((ing: string) => containsHebrew(ing))) ||
                                (parsedResult.instructions?.some((inst: string) => containsHebrew(inst)));
         
         if (parsedResult.isRecipe === false) {
-          // This is a non-recipe response
           return {
             name: parsedResult.name || "Response",
             ingredients: [],
@@ -204,27 +231,21 @@ The JSON must be valid and parseable.`;
           };
         }
         
-        // Validate required fields for recipes
         if (!parsedResult.name || !Array.isArray(parsedResult.ingredients) || !Array.isArray(parsedResult.instructions)) {
           throw new Error('Invalid recipe format');
         }
         
-        // Process ingredients to remove any "For the X:" prefix patterns
         const cleanedIngredients = parsedResult.ingredients.map((ing: string) => {
-          // Remove prefixes like "For the dough:" or "- For the sauce:"
           return ing.replace(/^(-\s*)?(For the [^:]+:)\s*/i, '');
         });
         
-        // Get proper RTL setting based on content language
         const isRTL = parsedResult.isRTL !== undefined 
           ? parsedResult.isRTL 
           : language === 'he' || isHebrewRecipe;
         
-        // Choose appropriate labels based on RTL
         const ingredientsLabel = parsedResult.ingredientsLabel || (isRTL ? 'מצרכים' : 'Ingredients');
         const instructionsLabel = parsedResult.instructionsLabel || (isRTL ? 'אופן ההכנה' : 'Instructions');
         
-        // Add quick replies to the response message
         const quickReplies = parsedResult.quickReplies || [];
         
         return {
@@ -261,6 +282,8 @@ The JSON must be valid and parseable.`;
 
   async editRecipe(originalRecipe: RecipeResponse, editRequest: string, language: string = 'en'): Promise<RecipeResponse> {
     try {
+      this.apiKey = getRandomApiKey();
+      
       const isHebrew = language === 'he';
       const prompt = `
 Original recipe:
