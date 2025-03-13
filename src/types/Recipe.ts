@@ -1,4 +1,4 @@
-
+﻿
 export interface CulinaryTerm {
   term: string;
   definition: string;
@@ -29,46 +29,48 @@ export interface UserStatistics {
 }
 
 export interface Recipe {
-  id: string;
-  name: string;
-  ingredients: string[];
-  instructions: string[];
-  createdAt: Date;
-  isRTL?: boolean;
-  ingredientsLabel?: string;
-  instructionsLabel?: string;
-  isRecipe?: boolean;
-  content?: string;
-  isFavorite: boolean;
-  tags?: string[];
-  difficulty?: 'easy' | 'medium' | 'hard';
-  estimatedTime?: string;
-  calories?: string;
-  notes: string;
-  rating: number;
-  status: 'draft' | 'accepted' | 'rejected' | 'published';
-  timeMarkers?: {
-    step: number;
-    duration: number;
-    description: string;
-  }[];
-  prepTime?: string;
-  cookTime?: string;
-  totalTime?: string;
-  servings?: number;
-  nutritionInfo?: {
+    id: string;
+    name: string;
+    ingredients: string[];
+    instructions: string[];
+    createdAt: Date;
+    isRTL?: boolean;
+    ingredientsLabel?: string;
+    instructionsLabel?: string;
+    isRecipe?: boolean;
+    content?: string;
+    isFavorite: boolean;
+    user_id: string; // ✅ הוספת השדה החסר
+    tags?: string[];
+    difficulty?: 'easy' | 'medium' | 'hard';
+    estimatedTime?: string;
     calories?: string;
-    protein?: string;
-    carbs?: string;
-    fat?: string;
-  };
-  seasonality?: string[];
-  cuisine?: string;
-  likes?: number;
-  author?: string;
-  publishedAt?: Date;
-  imageBase64?: string;
+    notes: string;
+    rating: number;
+    status: 'draft' | 'accepted' | 'rejected' | 'published';
+    timeMarkers?: {
+        step: number;
+        duration: number;
+        description: string;
+    }[];
+    prepTime?: string;
+    cookTime?: string;
+    totalTime?: string;
+    servings?: number;
+    nutritionInfo?: {
+        calories?: string;
+        protein?: string;
+        carbs?: string;
+        fat?: string;
+    };
+    seasonality?: string[];
+    cuisine?: string;
+    likes?: number;
+    author?: string;
+    publishedAt?: Date;
+    imageBase64?: string;
 }
+
 
 export interface RecipeRequest {
   prompt: string;

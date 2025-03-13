@@ -57,6 +57,43 @@ export type Database = {
         }
         Relationships: []
       }
+          favorites: {
+              Row: {
+                  id: string;
+                  user_id: string;
+                  recipe_id: string;
+                  created_at: string;
+              },
+              Insert: {
+                  id?: string;
+                  user_id: string;
+                  recipe_id: string;
+                  created_at?: string;
+              },
+              Update: {
+                  id?: string;
+                  user_id?: string;
+                  recipe_id?: string;
+                  created_at?: string;
+              },
+              Relationships: [
+                  {
+                      foreignKeyName: 'favorites_recipe_id_fkey';
+                      columns: ['recipe_id'];
+                      isOneToOne: false;
+                      referencedRelation: 'recipes';
+                      referencedColumns: ['id'];
+                  },
+                  {
+                      foreignKeyName: 'favorites_user_id_fkey';
+                      columns: ['user_id'];
+                      isOneToOne: false;
+                      referencedRelation: 'profiles';
+                      referencedColumns: ['id'];
+                  }
+              ];
+          }
+
       recipe_likes: {
         Row: {
           created_at: string | null
@@ -87,7 +124,8 @@ export type Database = {
         ]
       }
       recipes: {
-        Row: {
+          Row: {
+          user_id?: string;
           author: string | null
           calories: string | null
           content: string | null
