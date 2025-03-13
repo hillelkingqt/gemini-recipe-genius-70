@@ -1,418 +1,438 @@
 
-import { RecipeRequest, RecipeResponse } from "../types/Recipe";
-import { getRandomApiKey } from "./ApiKeyManager";
+import { RecipeRequest, RecipeResponse } from '@/types/Recipe';
+import { apiKeyManager } from './ApiKeyManager';
 
-const MODEL_NAME = "gemini-2.0-flash-thinking-exp";
-
-export class GeminiService {
-  private apiKey: string;
-  private modelName: string;
-
-  constructor() {
-    this.apiKey = getRandomApiKey();
-    this.modelName = MODEL_NAME;
+class GeminiService {
+  private readonly baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+  private readonly visionUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent";
+  
+  // Helper to get the correct API URL and key
+  private getApiConfig(hasImage: boolean = false) {
+    const apiKey = apiKeyManager.getRandomApiKey();
+    const url = hasImage ? this.visionUrl : this.baseUrl;
+    return {
+      url: `${url}?key=${apiKey}`,
+      apiKey
+    };
   }
 
   async generateRecipe(request: RecipeRequest): Promise<RecipeResponse> {
     try {
-      this.apiKey = getRandomApiKey();
+      const hasImage = !!request.imageBase64;
+      const { url } = this.getApiConfig(hasImage);
       
-      const prompt = this.createPrompt(request);
-      const requestBody: any = {
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 4096,
-        },
-      };
+      // Build system prompt
+      let systemPrompt = `You are a professional chef who specializes in creating recipes. You'll analyze the user's request and create a detailed recipe with ingredients and instructions.`;
+      
+      // Add user preferences if available
+      if (request.userPreferences) {
+        systemPrompt += `\nConsider these user preferences:
+- Dietary restrictions: ${request.userPreferences.dietaryRestrictions?.join(', ') || 'None'}
+- Allergies: ${request.userPreferences.allergies?.join(', ') || 'None'}
+- Favorite ingredients: ${request.userPreferences.favoriteIngredients?.join(', ') || 'None'}
+- Disliked ingredients: ${request.userPreferences.dislikedIngredients?.join(', ') || 'None'}
+- Preferred cuisines: ${request.userPreferences.preferredCuisines?.join(', ') || 'None'}
+- Cooking skill level: ${request.userPreferences.cookingSkillLevel || 'intermediate'}
+- Health goals: ${request.userPreferences.healthGoals?.join(', ') || 'None'}
+- Notes: ${request.userPreferences.notes || ''}`;
+      }
 
-      if (request.imageBase64) {
-        requestBody.contents[0].parts.push({
-          inline_data: {
-            mime_type: "image/jpeg",
-            data: request.imageBase64.split(',')[1]
+      // Determine content parts based on whether an image is provided
+      const contentParts = [];
+      
+      // Add system prompt
+      contentParts.push({
+        text: systemPrompt
+      });
+      
+      // Add text prompt
+      contentParts.push({
+        text: request.prompt
+      });
+      
+      // Add image if present
+      if (hasImage && request.imageBase64) {
+        // Remove the data URL prefix if present
+        const base64Image = request.imageBase64.includes('base64,') 
+          ? request.imageBase64.split('base64,')[1] 
+          : request.imageBase64;
+        
+        contentParts.push({
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: base64Image
           }
         });
       }
       
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${this.apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+      // Create the request body
+      const requestBody = {
+        contents: [
+          {
+            role: "user",
+            parts: contentParts
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.8,
+          topK: 40,
+          maxOutputTokens: 4096,
+        },
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
           },
-          body: JSON.stringify(requestBody),
-        }
-      );
+          {
+            category: "HARM_CATEGORY_HATE_SPEECH",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          }
+        ]
+      };
 
-      const data = await response.json();
+      console.log('Sending recipe request:', JSON.stringify(requestBody));
       
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
       if (!response.ok) {
-        console.error('Error from Gemini API:', data);
+        const errorText = await response.text();
+        console.error('Gemini API error:', errorText);
+        
+        // If the error is due to an invalid API key, try with a different one
+        if (response.status === 400 || response.status === 403) {
+          console.log('Trying with a different API key...');
+          const newApiKey = apiKeyManager.getNextApiKey();
+          console.log(`Switched to API key: ${newApiKey.substring(0, 5)}...`);
+          
+          // Retry the request
+          return this.generateRecipe(request);
+        }
+        
         throw new Error('Failed to generate recipe');
       }
 
-      return this.parseRecipeResponse(data, request.language || 'en');
-    } catch (error) {
-      console.error('Error generating recipe:', error);
-      throw error;
-    }
-  }
+      const data = await response.json();
+      console.log('Gemini API response:', data);
 
-  private createPrompt(request: RecipeRequest): string {
-    const { prompt, language = 'en', userPreferences } = request;
-    const isHebrew = language === 'he';
-    
-    let fullPrompt = `
-You are a professional chef specialized in creating detailed recipes.
-Create a recipe based on this request: "${prompt}"
-
-${isHebrew ? "Please respond in Hebrew, following RTL (right-to-left) text direction." : "Please respond in English."}
-`;
-
-    if (request.imageBase64) {
-      fullPrompt += `
-I've included an image with this request. Please analyze the image and:
-- If it shows food or ingredients, create a recipe based on what you see
-- If it shows a written recipe, transcribe it and format it properly
-- Consider the image as an important part of the context when creating the recipe
-`;
-    }
-
-    if (userPreferences) {
-      fullPrompt += `
-Please consider these user preferences when creating the recipe:
-${Object.entries(userPreferences)
-  .filter(([_, value]) => value !== undefined && value !== null && value.length > 0)
-  .map(([key, value]) => {
-    if (Array.isArray(value)) {
-      return `- ${key}: ${value.join(', ')}`;
-    }
-    return `- ${key}: ${value}`;
-  })
-  .join('\n')}
-`;
-    }
-
-    fullPrompt += `
-Please provide:
-- Detailed ingredients with quantities
-- Step-by-step instructions
-- Automatic tags based on ingredients and style
-- Difficulty level (easy, medium, hard)
-- Preparation time breakdown
-- Calorie estimate per serving
-- Time markers for steps that need timers (e.g., "bake for 30 minutes" or "let dough rise for 2 hours")
-- Nutrition information if possible
-- Cuisine type
-- Seasonal recommendations if applicable
-- Servings information
-- Quick reply suggestions for recipe variations (e.g., "Make it vegetarian", "Make it spicier", "Healthier version")
-
-IMPORTANT: For quick replies, include 2-3 relevant suggestions based on the recipe context, such as:
-- Dietary modifications (vegetarian, vegan, gluten-free)
-- Flavor variations (spicier, milder, different herbs)
-- Health-focused changes (lower calories, higher protein)
-Each quick reply should include an appropriate emoji.
-
-IMPORTANT FORMATTING GUIDELINES:
-1. DO NOT use category labels like "For the dough:" or "For the sauce:" before ingredients. List all ingredients directly.
-2. Each ingredient should start with the quantity followed by the ingredient name.
-3. All ingredients should be in a simple list format.
-4. Instructions should be clear, concise steps without section headers.
-5. NEVER include prefixes like "- For the dough:" in the ingredients or instructions.
-6. Do not include any labels or categories before lists. The user will be confused if you add text like "For the filling:" or "For the marinade:" before ingredients.
-
-Respond ONLY with a complete, valid JSON object using this exact structure, nothing else:
-{
-  "name": "Recipe Name",
-  "ingredients": ["ingredient 1", "ingredient 2"],
-  "instructions": ["step 1", "step 2"],
-  "isRecipe": true,
-  ${isHebrew ? '"isRTL": true,' : '"isRTL": false,'}
-  ${isHebrew ? '"ingredientsLabel": "מצרכים",' : '"ingredientsLabel": "Ingredients",'}
-  ${isHebrew ? '"instructionsLabel": "אופן ההכנה",' : '"instructionsLabel": "Instructions",'}
-  "tags": ["tag1", "tag2"],
-  "difficulty": "easy|medium|hard",
-  "estimatedTime": "30 min",
-  "calories": "300 calories per serving",
-  "timeMarkers": [
-    {
-      "step": 1,
-      "duration": 30,
-      "description": "let the dough rise"
-    }
-  ],
-  "prepTime": "15 minutes",
-  "cookTime": "45 minutes",
-  "totalTime": "1 hour",
-  "servings": 4,
-  "nutritionInfo": {
-    "calories": "300 per serving",
-    "protein": "15g",
-    "carbs": "40g",
-    "fat": "10g"
-  },
-  "seasonality": ["Spring", "Summer"],
-  "cuisine": "Mediterranean",
-  "quickReplies": [
-    {
-      "text": "Make it vegetarian",
-      "action": "modify_vegetarian",
-      "emoji": "🥬"
-    }
-  ]
-}
-
-For the "timeMarkers" field, identify any steps that require waiting or timed cooking (like "bake for 20 minutes" or "let rise for 1 hour"). Extract these times and create timeMarker objects with:
-- step: the step number in the instructions array (starting from 0)
-- duration: the time in minutes
-- description: a short description of what's happening during this time
-
-If the user is NOT asking for a recipe or food-related content, respond with:
-{
-  "name": "Response",
-  "content": "Your helpful response here",
-  "isRecipe": false,
-  ${isHebrew ? '"isRTL": true' : '"isRTL": false'}
-}
-
-The recipe should be detailed and professional.
-Do not add any text, formatting, or explanation outside the JSON.
-The JSON must be valid and parseable.`;
-    return fullPrompt;
-  }
-
-  private parseRecipeResponse(response: any, language: string): RecipeResponse {
-    try {
-      console.log('Raw API response:', response);
-      
-      if (!response.candidates || 
-          !response.candidates[0] || 
-          !response.candidates[0].content ||
-          !response.candidates[0].content.parts ||
-          !response.candidates[0].content.parts[0] ||
-          !response.candidates[0].content.parts[0].text) {
-        throw new Error('Invalid API response structure');
+      // Check if we have a valid response
+      if (!data.candidates || data.candidates.length === 0 || !data.candidates[0].content) {
+        throw new Error('Empty response from Gemini API');
       }
+
+      const content = data.candidates[0].content.parts[0].text;
       
-      const content = response.candidates[0].content.parts[0].text;
-      console.log('Response content:', content);
+      // Check if the language is RTL (like Hebrew or Arabic)
+      const isRTL = this.detectRTL(content) || (request.language === 'he');
       
-      const jsonRegex = /\{[\s\S]*\}/g;
-      const jsonMatch = content.match(jsonRegex);
-      
-      if (!jsonMatch) {
-        console.error('No JSON object found in response');
-        throw new Error('Failed to extract JSON from response');
-      }
-      
-      const jsonStr = jsonMatch[0];
-      console.log('Extracted JSON:', jsonStr);
-      
+      // Try to parse the content as a recipe
       try {
-        const parsedResult = JSON.parse(jsonStr);
+        // Extract recipe details with a regex pattern
+        const nameMatch = content.match(/(?:Title|Name|Recipe|שם המתכון|מתכון|כותרת):\s*([^\n]+)/i);
+        const ingredientsMatch = content.match(/(?:Ingredients|מצרכים|חומרים):\s*([\s\S]*?)(?=\n\s*(?:Instructions|Directions|Method|Preparation|אופן הכנה|הוראות|שלבי הכנה):)/i);
+        const instructionsMatch = content.match(/(?:Instructions|Directions|Method|Preparation|אופן הכנה|הוראות|שלבי הכנה):\s*([\s\S]*?)(?=\n\s*(?:Notes|Tips|Serving Suggestions|הערות|טיפים|הגשה):|\n*$)/i);
         
-        const containsHebrew = (text: string) => /[\u0590-\u05FF]/.test(text);
-        const isHebrewRecipe = containsHebrew(parsedResult.name) || 
-                               (parsedResult.ingredients?.some((ing: string) => containsHebrew(ing))) ||
-                               (parsedResult.instructions?.some((inst: string) => containsHebrew(inst)));
+        // Additional metadata
+        const difficultyMatch = content.match(/(?:Difficulty|רמת קושי):\s*([^\n]+)/i);
+        const timeMatch = content.match(/(?:Time|Total Time|זמן הכנה|זמן כולל):\s*([^\n]+)/i);
+        const servingsMatch = content.match(/(?:Servings|Yield|מנות|תפוקה):\s*([^\n]+)/i);
+        const caloriesMatch = content.match(/(?:Calories|קלוריות):\s*([^\n]+)/i);
+        const cuisineMatch = content.match(/(?:Cuisine|מטבח):\s*([^\n]+)/i);
+        const tagsMatch = content.match(/(?:Tags|Keywords|תגיות|מילות מפתח):\s*([^\n]+)/i);
         
-        if (parsedResult.isRecipe === false) {
-          return {
-            name: parsedResult.name || "Response",
-            ingredients: [],
-            instructions: [],
-            isRecipe: false,
-            isRTL: parsedResult.isRTL || language === 'he' || isHebrewRecipe,
-            content: parsedResult.content || "I can only help with recipes and food-related questions."
-          };
-        }
+        // Process ingredients: split by lines and clean up
+        const ingredients = ingredientsMatch && ingredientsMatch[1]
+          ? ingredientsMatch[1].split('\n')
+              .map(line => line.trim())
+              .filter(line => line.length > 0 && !line.match(/^-+$/))
+              .map(line => line.replace(/^[•\-\*]\s*/, ''))
+          : [];
         
-        if (!parsedResult.name || !Array.isArray(parsedResult.ingredients) || !Array.isArray(parsedResult.instructions)) {
-          throw new Error('Invalid recipe format');
-        }
+        // Process instructions: split by numbered lines or line breaks
+        const instructions = instructionsMatch && instructionsMatch[1]
+          ? instructionsMatch[1].split(/\n(?:\d+[\.\)]\s*|(?:[•\-\*]\s*))|\n\n/)
+              .map(line => line.trim())
+              .filter(line => line.length > 0 && !line.match(/^-+$/))
+              .map(line => line.replace(/^[•\-\*\d]+[\.\)]\s*/, ''))
+          : [];
         
-        const cleanedIngredients = parsedResult.ingredients.map((ing: string) => {
-          return ing.replace(/^(-\s*)?(For the [^:]+:)\s*/i, '');
-        });
+        // Process tags if available
+        const tags = tagsMatch && tagsMatch[1]
+          ? tagsMatch[1].split(/[,،;]/).map(tag => tag.trim())
+          : [];
         
-        const isRTL = parsedResult.isRTL !== undefined 
-          ? parsedResult.isRTL 
-          : language === 'he' || isHebrewRecipe;
-        
-        const ingredientsLabel = parsedResult.ingredientsLabel || (isRTL ? 'מצרכים' : 'Ingredients');
-        const instructionsLabel = parsedResult.instructionsLabel || (isRTL ? 'אופן ההכנה' : 'Instructions');
-        
-        const quickReplies = parsedResult.quickReplies || [];
-        
-        return {
-          name: parsedResult.name,
-          ingredients: cleanedIngredients,
-          instructions: parsedResult.instructions,
+        const recipeResponse: RecipeResponse = {
+          name: nameMatch && nameMatch[1] ? nameMatch[1].trim() : 'Untitled Recipe',
+          ingredients,
+          instructions,
           isRecipe: true,
           isRTL,
-          ingredientsLabel,
-          instructionsLabel,
-          tags: parsedResult.tags || [],
-          difficulty: parsedResult.difficulty || 'medium',
-          estimatedTime: parsedResult.estimatedTime || '',
-          calories: parsedResult.calories || '',
-          timeMarkers: parsedResult.timeMarkers || [],
-          prepTime: parsedResult.prepTime || '',
-          cookTime: parsedResult.cookTime || '',
-          totalTime: parsedResult.totalTime || '',
-          servings: parsedResult.servings || 4,
-          nutritionInfo: parsedResult.nutritionInfo || {},
-          seasonality: parsedResult.seasonality || [],
-          cuisine: parsedResult.cuisine || '',
-          quickReplies
+          ingredientsLabel: isRTL ? 'מצרכים' : 'Ingredients',
+          instructionsLabel: isRTL ? 'אופן הכנה' : 'Instructions',
+          difficulty: difficultyMatch && difficultyMatch[1] ? this.parseDifficulty(difficultyMatch[1]) : undefined,
+          estimatedTime: timeMatch && timeMatch[1] ? timeMatch[1].trim() : undefined,
+          servings: servingsMatch && servingsMatch[1] ? parseInt(servingsMatch[1], 10) || undefined : undefined,
+          calories: caloriesMatch && caloriesMatch[1] ? caloriesMatch[1].trim() : undefined,
+          cuisine: cuisineMatch && cuisineMatch[1] ? cuisineMatch[1].trim() : undefined,
+          tags,
+          imageBase64: request.imageBase64,
+          quickReplies: [
+            { text: isRTL ? "שנה את הוראות ההכנה" : "Modify the instructions", action: "edit", emoji: "✏️" },
+            { text: isRTL ? "הוסף יותר תבלינים" : "Add more spices", action: "spice", emoji: "🌶️" },
+            { text: isRTL ? "קצר את המתכון" : "Simplify the recipe", action: "simplify", emoji: "✨" }
+          ]
         };
+        
+        return recipeResponse;
+        
       } catch (parseError) {
-        console.error('JSON parse error:', parseError);
-        throw new Error('Failed to parse JSON from response');
+        console.error('Error parsing recipe:', parseError);
+        
+        // Return a fallback response with the raw content
+        return {
+          name: 'Generated Content',
+          ingredients: [],
+          instructions: [],
+          content,
+          isRecipe: false,
+          isRTL
+        };
       }
     } catch (error) {
-      console.error('Error parsing recipe response:', error);
-      throw new Error('Failed to parse recipe response');
+      console.error('Error in generateRecipe:', error);
+      
+      // Provide a meaningful error response
+      return {
+        name: 'Error Generating Recipe',
+        ingredients: [],
+        instructions: [],
+        content: `I'm sorry, I couldn't generate a recipe at this time. ${error.message}`,
+        isRecipe: false
+      };
     }
   }
 
-  async editRecipe(originalRecipe: RecipeResponse, editRequest: string, language: string = 'en'): Promise<RecipeResponse> {
+  async editRecipe(currentRecipe: RecipeResponse, editRequest: string, language?: string): Promise<RecipeResponse> {
     try {
-      this.apiKey = getRandomApiKey();
+      const { url } = this.getApiConfig();
       
-      const isHebrew = language === 'he';
-      const prompt = `
-Original recipe:
-${JSON.stringify(originalRecipe, null, 2)}
-
-Edit request: "${editRequest}"
-
-Please modify the recipe according to the edit request.
-${isHebrew ? "Please respond in Hebrew, following RTL (right-to-left) text direction." : "Please respond in English."}
-
-Please provide:
-- Detailed ingredients with quantities
-- Step-by-step instructions
-- Automatic tags based on ingredients and style
-- Difficulty level (easy, medium, hard)
-- Preparation time breakdown
-- Calorie estimate per serving
-- Time markers for steps that need timers (e.g., "bake for 30 minutes" or "let dough rise for 2 hours")
-- Nutrition information if possible
-- Cuisine type
-- Seasonal recommendations if applicable
-
-IMPORTANT FORMATTING GUIDELINES:
-1. DO NOT use category labels like "For the dough:" or "For the sauce:" before ingredients. List all ingredients directly.
-2. Each ingredient should start with the quantity followed by the ingredient name.
-3. All ingredients should be in a simple list format.
-4. Instructions should be clear, concise steps without section headers.
-5. NEVER include prefixes like "- For the dough:" in the ingredients or instructions.
-6. Do not include any labels or categories before lists. The user will be confused if you add text like "For the filling:" or "For the marinade:" before ingredients.
-
-For the "timeMarkers" field, identify any steps that require waiting or timed cooking (like "bake for 20 minutes" or "let rise for 1 hour"). Extract these times and create timeMarker objects with:
-- step: the step number in the instructions array (starting from 0)
-- duration: the time in minutes
-- description: a short description of what's happening during this time
-
-Respond ONLY with a valid JSON object that has the following structure:
-{
-  "name": "Recipe Name",
-  "ingredients": ["ingredient 1", "ingredient 2", ...],
-  "instructions": ["step 1", "step 2", ...],
-  "isRecipe": true,
-  ${isHebrew ? '"isRTL": true,' : '"isRTL": false,'}
-  ${isHebrew ? '"ingredientsLabel": "מצרכים",' : '"ingredientsLabel": "Ingredients",'}
-  ${isHebrew ? '"instructionsLabel": "אופן ההכנה",' : '"instructionsLabel": "Instructions",'}
-  "tags": ["tag1", "tag2"],
-  "difficulty": "easy|medium|hard",
-  "estimatedTime": "30 min",
-  "calories": "300 calories per serving",
-  "timeMarkers": [
-    {
-      "step": 1,
-      "duration": 30,
-      "description": "let the dough rise"
-    }
-  ],
-  "prepTime": "15 minutes",
-  "cookTime": "45 minutes",
-  "totalTime": "1 hour",
-  "servings": 4,
-  "nutritionInfo": {
-    "calories": "300 per serving",
-    "protein": "15g",
-    "carbs": "40g",
-    "fat": "10g"
-  },
-  "seasonality": ["Spring", "Summer"],
-  "cuisine": "Mediterranean",
-  "quickReplies": [
-    {
-      "text": "Make it vegetarian",
-      "action": "modify_vegetarian",
-      "emoji": "🥬"
-    }
-  ]
-}
-
-The recipe should be detailed and professional.
-Do not include any text before or after the JSON object.
-Do not include markdown formatting or code blocks.
-The JSON must be valid and parseable.
-`;
+      // Build the system prompt
+      const systemPrompt = `You are a professional chef who specializes in creating recipes. You'll update the given recipe based on the user's request. Return the full updated recipe with all information.`;
       
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${this.apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+      // Format the current recipe for the prompt
+      const currentRecipeText = `
+Recipe Name: ${currentRecipe.name}
+
+Ingredients:
+${currentRecipe.ingredients.map(ing => `- ${ing}`).join('\n')}
+
+Instructions:
+${currentRecipe.instructions.map((inst, idx) => `${idx + 1}. ${inst}`).join('\n')}
+${currentRecipe.difficulty ? `\nDifficulty: ${currentRecipe.difficulty}` : ''}
+${currentRecipe.estimatedTime ? `\nEstimated Time: ${currentRecipe.estimatedTime}` : ''}
+${currentRecipe.servings ? `\nServings: ${currentRecipe.servings}` : ''}
+${currentRecipe.calories ? `\nCalories: ${currentRecipe.calories}` : ''}
+${currentRecipe.cuisine ? `\nCuisine: ${currentRecipe.cuisine}` : ''}
+${currentRecipe.tags && currentRecipe.tags.length > 0 ? `\nTags: ${currentRecipe.tags.join(', ')}` : ''}
+      `;
+      
+      // Create the user prompt
+      const userPrompt = `Here is the current recipe:\n${currentRecipeText}\n\nEDIT REQUEST: ${editRequest}\n\nPlease update the recipe based on this request and return the full updated recipe.`;
+      
+      // Prepare the request
+      const requestBody = {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: systemPrompt },
+              { text: userPrompt }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.8,
+          topK: 40,
+          maxOutputTokens: 4096,
+        },
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
           },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt,
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.7,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 4096,
-            },
-          }),
-        }
-      );
-
-      const data = await response.json();
+          {
+            category: "HARM_CATEGORY_HATE_SPEECH",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          }
+        ]
+      };
+      
+      console.log('Sending edit request:', JSON.stringify(requestBody));
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
       
       if (!response.ok) {
-        console.error('Error from Gemini API:', data);
+        const errorText = await response.text();
+        console.error('Gemini API error:', errorText);
+        
+        // If the error is due to an invalid API key, try with a different one
+        if (response.status === 400 || response.status === 403) {
+          console.log('Trying with a different API key...');
+          const newApiKey = apiKeyManager.getNextApiKey();
+          console.log(`Switched to API key: ${newApiKey.substring(0, 5)}...`);
+          
+          // Retry the request
+          return this.editRecipe(currentRecipe, editRequest, language);
+        }
+        
         throw new Error('Failed to edit recipe');
       }
-
-      return this.parseRecipeResponse(data, language);
+      
+      const data = await response.json();
+      console.log('Gemini API response:', data);
+      
+      // Check if we have a valid response
+      if (!data.candidates || data.candidates.length === 0 || !data.candidates[0].content) {
+        throw new Error('Empty response from Gemini API');
+      }
+      
+      const content = data.candidates[0].content.parts[0].text;
+      
+      // Check if the language is RTL
+      const isRTL = this.detectRTL(content) || (language === 'he') || currentRecipe.isRTL;
+      
+      // Try to parse the content as a recipe
+      try {
+        // Extract recipe details with a regex pattern
+        const nameMatch = content.match(/(?:Title|Name|Recipe|שם המתכון|מתכון|כותרת):\s*([^\n]+)/i);
+        const ingredientsMatch = content.match(/(?:Ingredients|מצרכים|חומרים):\s*([\s\S]*?)(?=\n\s*(?:Instructions|Directions|Method|Preparation|אופן הכנה|הוראות|שלבי הכנה):)/i);
+        const instructionsMatch = content.match(/(?:Instructions|Directions|Method|Preparation|אופן הכנה|הוראות|שלבי הכנה):\s*([\s\S]*?)(?=\n\s*(?:Notes|Tips|Serving Suggestions|הערות|טיפים|הגשה):|\n*$)/i);
+        
+        // Additional metadata
+        const difficultyMatch = content.match(/(?:Difficulty|רמת קושי):\s*([^\n]+)/i);
+        const timeMatch = content.match(/(?:Time|Total Time|זמן הכנה|זמן כולל):\s*([^\n]+)/i);
+        const servingsMatch = content.match(/(?:Servings|Yield|מנות|תפוקה):\s*([^\n]+)/i);
+        const caloriesMatch = content.match(/(?:Calories|קלוריות):\s*([^\n]+)/i);
+        const cuisineMatch = content.match(/(?:Cuisine|מטבח):\s*([^\n]+)/i);
+        const tagsMatch = content.match(/(?:Tags|Keywords|תגיות|מילות מפתח):\s*([^\n]+)/i);
+        
+        // Process ingredients: split by lines and clean up
+        const ingredients = ingredientsMatch && ingredientsMatch[1]
+          ? ingredientsMatch[1].split('\n')
+              .map(line => line.trim())
+              .filter(line => line.length > 0 && !line.match(/^-+$/))
+              .map(line => line.replace(/^[•\-\*]\s*/, ''))
+          : currentRecipe.ingredients;
+        
+        // Process instructions: split by numbered lines or line breaks
+        const instructions = instructionsMatch && instructionsMatch[1]
+          ? instructionsMatch[1].split(/\n(?:\d+[\.\)]\s*|(?:[•\-\*]\s*))|\n\n/)
+              .map(line => line.trim())
+              .filter(line => line.length > 0 && !line.match(/^-+$/))
+              .map(line => line.replace(/^[•\-\*\d]+[\.\)]\s*/, ''))
+          : currentRecipe.instructions;
+        
+        // Process tags if available
+        const tags = tagsMatch && tagsMatch[1]
+          ? tagsMatch[1].split(/[,،;]/).map(tag => tag.trim())
+          : currentRecipe.tags;
+        
+        // Create the updated recipe
+        const updatedRecipe: RecipeResponse = {
+          ...currentRecipe,
+          name: nameMatch && nameMatch[1] ? nameMatch[1].trim() : currentRecipe.name,
+          ingredients,
+          instructions,
+          isRTL,
+          ingredientsLabel: isRTL ? 'מצרכים' : 'Ingredients',
+          instructionsLabel: isRTL ? 'אופן הכנה' : 'Instructions',
+          difficulty: difficultyMatch && difficultyMatch[1] 
+            ? this.parseDifficulty(difficultyMatch[1]) 
+            : currentRecipe.difficulty,
+          estimatedTime: timeMatch && timeMatch[1] 
+            ? timeMatch[1].trim() 
+            : currentRecipe.estimatedTime,
+          servings: servingsMatch && servingsMatch[1] 
+            ? parseInt(servingsMatch[1], 10) || currentRecipe.servings 
+            : currentRecipe.servings,
+          calories: caloriesMatch && caloriesMatch[1] 
+            ? caloriesMatch[1].trim() 
+            : currentRecipe.calories,
+          cuisine: cuisineMatch && cuisineMatch[1] 
+            ? cuisineMatch[1].trim() 
+            : currentRecipe.cuisine,
+          tags: tags || currentRecipe.tags,
+        };
+        
+        return updatedRecipe;
+        
+      } catch (parseError) {
+        console.error('Error parsing edited recipe:', parseError);
+        
+        // Return a fallback response with the raw content
+        return {
+          ...currentRecipe,
+          content,
+          isRecipe: false
+        };
+      }
     } catch (error) {
-      console.error('Error editing recipe:', error);
-      throw error;
+      console.error('Error in editRecipe:', error);
+      
+      // Return the original recipe with an error message
+      return {
+        ...currentRecipe,
+        content: `Error editing recipe: ${error.message}`,
+      };
+    }
+  }
+  
+  // Helper function to detect RTL text
+  private detectRTL(text: string): boolean {
+    // Hebrew and Arabic character ranges
+    const rtlPattern = /[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]/;
+    return rtlPattern.test(text);
+  }
+  
+  // Helper function to parse difficulty level
+  private parseDifficulty(difficultyText: string): 'easy' | 'medium' | 'hard' {
+    const text = difficultyText.toLowerCase();
+    
+    if (text.includes('easy') || text.includes('beginner') || text.includes('simple') || text.includes('קל')) {
+      return 'easy';
+    } else if (text.includes('hard') || text.includes('difficult') || text.includes('advanced') || text.includes('קשה')) {
+      return 'hard';
+    } else {
+      return 'medium';
     }
   }
 }

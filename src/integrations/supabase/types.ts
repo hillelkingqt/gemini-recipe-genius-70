@@ -11,30 +11,84 @@ export type Database = {
     Tables: {
       profiles: {
         Row: {
+          allergies: string[] | null
           avatar_url: string | null
+          cooking_skill_level: string | null
           created_at: string
+          dietary_restrictions: string[] | null
+          disliked_ingredients: string[] | null
+          favorite_ingredients: string[] | null
+          health_goals: string[] | null
           id: string
+          preferred_cuisines: string[] | null
+          profile_notes: string | null
           updated_at: string
           username: string | null
         }
         Insert: {
+          allergies?: string[] | null
           avatar_url?: string | null
+          cooking_skill_level?: string | null
           created_at?: string
+          dietary_restrictions?: string[] | null
+          disliked_ingredients?: string[] | null
+          favorite_ingredients?: string[] | null
+          health_goals?: string[] | null
           id: string
+          preferred_cuisines?: string[] | null
+          profile_notes?: string | null
           updated_at?: string
           username?: string | null
         }
         Update: {
+          allergies?: string[] | null
           avatar_url?: string | null
+          cooking_skill_level?: string | null
           created_at?: string
+          dietary_restrictions?: string[] | null
+          disliked_ingredients?: string[] | null
+          favorite_ingredients?: string[] | null
+          health_goals?: string[] | null
           id?: string
+          preferred_cuisines?: string[] | null
+          profile_notes?: string | null
           updated_at?: string
           username?: string | null
         }
         Relationships: []
       }
+      recipe_likes: {
+        Row: {
+          created_at: string | null
+          id: string
+          recipe_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          recipe_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          recipe_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_likes_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipes: {
         Row: {
+          author: string | null
           calories: string | null
           content: string | null
           cook_time: string | null
@@ -43,6 +97,7 @@ export type Database = {
           difficulty: string | null
           estimated_time: string | null
           id: string
+          image_base64: string | null
           ingredients: Json
           ingredients_label: string | null
           instructions: Json
@@ -50,10 +105,12 @@ export type Database = {
           is_favorite: boolean | null
           is_recipe: boolean | null
           is_rtl: boolean | null
+          likes: number | null
           name: string
           notes: string | null
           nutrition_info: Json | null
           prep_time: string | null
+          published_at: string | null
           rating: number | null
           seasonality: Json | null
           servings: number | null
@@ -64,6 +121,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          author?: string | null
           calories?: string | null
           content?: string | null
           cook_time?: string | null
@@ -72,6 +130,7 @@ export type Database = {
           difficulty?: string | null
           estimated_time?: string | null
           id?: string
+          image_base64?: string | null
           ingredients: Json
           ingredients_label?: string | null
           instructions: Json
@@ -79,10 +138,12 @@ export type Database = {
           is_favorite?: boolean | null
           is_recipe?: boolean | null
           is_rtl?: boolean | null
+          likes?: number | null
           name: string
           notes?: string | null
           nutrition_info?: Json | null
           prep_time?: string | null
+          published_at?: string | null
           rating?: number | null
           seasonality?: Json | null
           servings?: number | null
@@ -93,6 +154,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          author?: string | null
           calories?: string | null
           content?: string | null
           cook_time?: string | null
@@ -101,6 +163,7 @@ export type Database = {
           difficulty?: string | null
           estimated_time?: string | null
           id?: string
+          image_base64?: string | null
           ingredients?: Json
           ingredients_label?: string | null
           instructions?: Json
@@ -108,10 +171,12 @@ export type Database = {
           is_favorite?: boolean | null
           is_recipe?: boolean | null
           is_rtl?: boolean | null
+          likes?: number | null
           name?: string
           notes?: string | null
           nutrition_info?: Json | null
           prep_time?: string | null
+          published_at?: string | null
           rating?: number | null
           seasonality?: Json | null
           servings?: number | null

@@ -1,164 +1,236 @@
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Session, User } from '@supabase/supabase-js';
+import { Session, User, AuthError } from '@supabase/supabase-js';
+import { useToast } from '@/components/ui/use-toast';
 import { UserProfile } from '@/types/Recipe';
 
-type AuthContextType = {
+interface AuthContextType {
   user: User | null;
-  session: Session | null;
   profile: UserProfile | null;
-  isLoading: boolean;
+  session: Session | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, username: string) => Promise<void>;
   signOut: () => Promise<void>;
+  loading: boolean;
+  updateProfile: (data: Partial<UserProfile>) => Promise<void>;
+  getProfile: () => Promise<void>;
+  failedLoginAttempts: number;
+  setFailedLoginAttempts: React.Dispatch<React.SetStateAction<number>>;
   resetPassword: (email: string) => Promise<void>;
-  updateUserProfile: (profile: Partial<UserProfile>) => Promise<void>;
-  isPasswordResetAttempt: boolean;
-  setIsPasswordResetAttempt: (value: boolean) => void;
-  loginAttempts: number;
-  incrementLoginAttempts: () => void;
-  resetLoginAttempts: () => void;
-};
+}
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  session: null,
   profile: null,
-  isLoading: true,
+  session: null,
   signIn: async () => {},
   signUp: async () => {},
   signOut: async () => {},
+  loading: true,
+  updateProfile: async () => {},
+  getProfile: async () => {},
+  failedLoginAttempts: 0,
+  setFailedLoginAttempts: () => {},
   resetPassword: async () => {},
-  updateUserProfile: async () => {},
-  isPasswordResetAttempt: false,
-  setIsPasswordResetAttempt: () => {},
-  loginAttempts: 0,
-  incrementLoginAttempts: () => {},
-  resetLoginAttempts: () => {},
 });
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
-  children 
-}) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isPasswordResetAttempt, setIsPasswordResetAttempt] = useState(false);
-  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [failedLoginAttempts, setFailedLoginAttempts] = useState(0);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const getSession = async () => {
-      setIsLoading(true);
+    // Get session on initial load
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
       
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error fetching session:', error);
-          return;
-        }
-        
-        if (session) {
-          setSession(session);
-          setUser(session.user);
-          
-          // Fetch user profile
-          if (session.user) {
-            await fetchUserProfile(session.user.id);
-          }
-        }
-      } catch (error) {
-        console.error('Session fetching error:', error);
-      } finally {
-        setIsLoading(false);
+      if (session?.user) {
+        getProfileData(session.user);
+      } else {
+        setLoading(false);
       }
-    };
-    
-    getSession();
-    
-    // Set up auth state change listener
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.info('Supabase auth event:', event, newSession);
-        console.info('Auth state changed:', event);
-        
-        setSession(newSession);
-        setUser(newSession?.user || null);
-        
-        if (newSession?.user) {
-          await fetchUserProfile(newSession.user.id);
-        } else {
-          setProfile(null);
-        }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        getProfileData(session.user);
+      } else {
+        setProfile(null);
+        setLoading(false);
       }
-    );
-    
+    });
+
     return () => {
-      authListener.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
-  
-  const fetchUserProfile = async (userId: string) => {
+
+  const getProfileData = async (currentUser: User) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', currentUser.id)
         .single();
       
       if (error) {
-        console.error('Error fetching user profile:', error);
-        return;
+        throw error;
       }
       
       if (data) {
-        setProfile({
+        // Convert the profile data to match our UserProfile type
+        const userProfile: UserProfile = {
           id: data.id,
           username: data.username || '',
-          avatarUrl: data.avatar_url,
-          dietaryRestrictions: data.dietary_restrictions,
-          allergies: data.allergies,
-          favoriteIngredients: data.favorite_ingredients,
-          dislikedIngredients: data.disliked_ingredients,
-          preferredCuisines: data.preferred_cuisines,
-          cookingSkillLevel: data.cooking_skill_level,
-          healthGoals: data.health_goals,
-          profileNotes: data.profile_notes,
+          avatarUrl: data.avatar_url || '',
+          dietaryRestrictions: data.dietary_restrictions || [],
+          allergies: data.allergies || [],
+          favoriteIngredients: data.favorite_ingredients || [],
+          dislikedIngredients: data.disliked_ingredients || [],
+          preferredCuisines: data.preferred_cuisines || [],
+          cookingSkillLevel: data.cooking_skill_level || 'intermediate',
+          healthGoals: data.health_goals || [],
+          profileNotes: data.profile_notes || '',
           created_at: data.created_at,
           updated_at: data.updated_at
-        });
+        };
+        
+        setProfile(userProfile);
       }
     } catch (error) {
-      console.error('Profile fetching error:', error);
+      console.error('Error fetching profile:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Profile Error",
+        description: "Failed to fetch user profile data.",
+      });
+    } finally {
+      setLoading(false);
     }
   };
-  
+
+  const getProfile = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      await getProfileData(user);
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (!user) throw new Error('User must be logged in');
+    
+    try {
+      setLoading(true);
+      
+      // Convert our UserProfile structure to match database column names
+      const dbUpdates = {
+        ...updates.username && { username: updates.username },
+        ...updates.avatarUrl && { avatar_url: updates.avatarUrl },
+        ...updates.dietaryRestrictions && { dietary_restrictions: updates.dietaryRestrictions },
+        ...updates.allergies && { allergies: updates.allergies },
+        ...updates.favoriteIngredients && { favorite_ingredients: updates.favoriteIngredients },
+        ...updates.dislikedIngredients && { disliked_ingredients: updates.dislikedIngredients },
+        ...updates.preferredCuisines && { preferred_cuisines: updates.preferredCuisines },
+        ...updates.cookingSkillLevel && { cooking_skill_level: updates.cookingSkillLevel },
+        ...updates.healthGoals && { health_goals: updates.healthGoals },
+        ...updates.profileNotes && { profile_notes: updates.profileNotes },
+      };
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update(dbUpdates)
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      // Refresh profile data
+      await getProfileData(user);
+      
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been successfully updated.",
+      });
+      
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Update Error",
+        description: "Failed to update profile.",
+      });
+      
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
     try {
+      setLoading(true);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) {
-        incrementLoginAttempts();
-        console.error('Sign in error:', error);
+        setFailedLoginAttempts(prev => prev + 1);
         throw error;
       }
       
-      // Reset login attempts on successful login
-      resetLoginAttempts();
+      // Reset failed attempts on successful login
+      setFailedLoginAttempts(0);
+      
+      toast({
+        title: "Welcome Back!",
+        description: "You've successfully signed in.",
+      });
+      
       return data;
+      
     } catch (error) {
-      console.error('Sign in process error:', error);
+      console.error('Error signing in:', error);
+      
+      let errorMessage = "Failed to sign in.";
+      if (error instanceof AuthError) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        variant: "destructive",
+        title: "Sign In Error",
+        description: errorMessage,
+      });
+      
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
-  
+
   const signUp = async (email: string, password: string, username: string) => {
     try {
+      setLoading(true);
+      
+      // Create the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -169,117 +241,118 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         },
       });
       
-      if (error) {
-        console.error('Sign up error:', error);
-        throw error;
-      }
+      if (error) throw error;
+      
+      toast({
+        title: "Account Created",
+        description: "Your account has been successfully created. Please check your email for verification.",
+      });
       
       return data;
+      
     } catch (error) {
-      console.error('Sign up process error:', error);
+      console.error('Error signing up:', error);
+      
+      let errorMessage = "Failed to create account.";
+      if (error instanceof AuthError) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        variant: "destructive",
+        title: "Sign Up Error",
+        description: errorMessage,
+      });
+      
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
-  
+
   const signOut = async () => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signOut();
       
-      if (error) {
-        console.error('Sign out error:', error);
-        throw error;
-      }
+      if (error) throw error;
+      
+      // Clear user and profile state
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      
+      toast({
+        title: "Signed Out",
+        description: "You've been successfully signed out.",
+      });
+      
     } catch (error) {
-      console.error('Sign out process error:', error);
-      throw error;
+      console.error('Error signing out:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Sign Out Error",
+        description: "There was an issue signing you out.",
+      });
+    } finally {
+      setLoading(false);
     }
   };
-  
+
   const resetPassword = async (email: string) => {
     try {
+      setLoading(true);
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/auth?reset=true`,
       });
       
-      if (error) {
-        console.error('Password reset error:', error);
-        throw error;
-      }
-    } catch (error) {
-      console.error('Password reset process error:', error);
-      throw error;
-    }
-  };
-  
-  const updateUserProfile = async (profileData: Partial<UserProfile>) => {
-    if (!user) return;
-    
-    try {
-      // Convert our UserProfile type fields to the database column names
-      const dbData: any = {};
+      if (error) throw error;
       
-      if (profileData.username !== undefined) dbData.username = profileData.username;
-      if (profileData.avatarUrl !== undefined) dbData.avatar_url = profileData.avatarUrl;
-      if (profileData.dietaryRestrictions !== undefined) dbData.dietary_restrictions = profileData.dietaryRestrictions;
-      if (profileData.allergies !== undefined) dbData.allergies = profileData.allergies;
-      if (profileData.favoriteIngredients !== undefined) dbData.favorite_ingredients = profileData.favoriteIngredients;
-      if (profileData.dislikedIngredients !== undefined) dbData.disliked_ingredients = profileData.dislikedIngredients;
-      if (profileData.preferredCuisines !== undefined) dbData.preferred_cuisines = profileData.preferredCuisines;
-      if (profileData.cookingSkillLevel !== undefined) dbData.cooking_skill_level = profileData.cookingSkillLevel;
-      if (profileData.healthGoals !== undefined) dbData.health_goals = profileData.healthGoals;
-      if (profileData.profileNotes !== undefined) dbData.profile_notes = profileData.profileNotes;
-      
-      const { error } = await supabase
-        .from('profiles')
-        .update(dbData)
-        .eq('id', user.id);
-      
-      if (error) {
-        console.error('Error updating profile:', error);
-        throw error;
-      }
-      
-      // Update local state
-      setProfile(prev => {
-        if (!prev) return profileData as UserProfile;
-        return { ...prev, ...profileData };
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your email for a link to reset your password.",
       });
+      
     } catch (error) {
-      console.error('Profile update error:', error);
+      console.error('Error resetting password:', error);
+      
+      let errorMessage = "Failed to send password reset email.";
+      if (error instanceof AuthError) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        variant: "destructive",
+        title: "Reset Error",
+        description: errorMessage,
+      });
+      
       throw error;
+    } finally {
+      setLoading(false);
     }
-  };
-  
-  const incrementLoginAttempts = () => {
-    setLoginAttempts(prev => prev + 1);
-  };
-  
-  const resetLoginAttempts = () => {
-    setLoginAttempts(0);
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        profile,
-        isLoading,
-        signIn,
-        signUp,
-        signOut,
-        resetPassword,
-        updateUserProfile,
-        isPasswordResetAttempt,
-        setIsPasswordResetAttempt,
-        loginAttempts,
-        incrementLoginAttempts,
-        resetLoginAttempts,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = {
+    user,
+    profile,
+    session,
+    signIn,
+    signUp,
+    signOut,
+    loading,
+    updateProfile,
+    getProfile,
+    failedLoginAttempts,
+    setFailedLoginAttempts,
+    resetPassword,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
