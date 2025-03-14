@@ -9,6 +9,35 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      favorites: {
+        Row: {
+          created_at: string | null
+          id: string
+          recipe_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          recipe_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          recipe_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           allergies: string[] | null
@@ -20,6 +49,7 @@ export type Database = {
           favorite_ingredients: string[] | null
           health_goals: string[] | null
           id: string
+          mention_in_title: boolean | null
           preferred_cuisines: string[] | null
           profile_notes: string | null
           updated_at: string
@@ -35,6 +65,7 @@ export type Database = {
           favorite_ingredients?: string[] | null
           health_goals?: string[] | null
           id: string
+          mention_in_title?: boolean | null
           preferred_cuisines?: string[] | null
           profile_notes?: string | null
           updated_at?: string
@@ -50,6 +81,7 @@ export type Database = {
           favorite_ingredients?: string[] | null
           health_goals?: string[] | null
           id?: string
+          mention_in_title?: boolean | null
           preferred_cuisines?: string[] | null
           profile_notes?: string | null
           updated_at?: string
@@ -57,43 +89,6 @@ export type Database = {
         }
         Relationships: []
       }
-          favorites: {
-              Row: {
-                  id: string;
-                  user_id: string;
-                  recipe_id: string;
-                  created_at: string;
-              },
-              Insert: {
-                  id?: string;
-                  user_id: string;
-                  recipe_id: string;
-                  created_at?: string;
-              },
-              Update: {
-                  id?: string;
-                  user_id?: string;
-                  recipe_id?: string;
-                  created_at?: string;
-              },
-              Relationships: [
-                  {
-                      foreignKeyName: 'favorites_recipe_id_fkey';
-                      columns: ['recipe_id'];
-                      isOneToOne: false;
-                      referencedRelation: 'recipes';
-                      referencedColumns: ['id'];
-                  },
-                  {
-                      foreignKeyName: 'favorites_user_id_fkey';
-                      columns: ['user_id'];
-                      isOneToOne: false;
-                      referencedRelation: 'profiles';
-                      referencedColumns: ['id'];
-                  }
-              ];
-          }
-
       recipe_likes: {
         Row: {
           created_at: string | null
@@ -124,8 +119,7 @@ export type Database = {
         ]
       }
       recipes: {
-          Row: {
-          user_id?: string;
+        Row: {
           author: string | null
           calories: string | null
           content: string | null
@@ -141,6 +135,7 @@ export type Database = {
           instructions: Json
           instructions_label: string | null
           is_favorite: boolean | null
+          is_from_community: boolean | null
           is_recipe: boolean | null
           is_rtl: boolean | null
           likes: number | null
@@ -174,6 +169,7 @@ export type Database = {
           instructions: Json
           instructions_label?: string | null
           is_favorite?: boolean | null
+          is_from_community?: boolean | null
           is_recipe?: boolean | null
           is_rtl?: boolean | null
           likes?: number | null
@@ -207,6 +203,7 @@ export type Database = {
           instructions?: Json
           instructions_label?: string | null
           is_favorite?: boolean | null
+          is_from_community?: boolean | null
           is_recipe?: boolean | null
           is_rtl?: boolean | null
           likes?: number | null

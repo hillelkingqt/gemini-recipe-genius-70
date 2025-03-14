@@ -6,6 +6,8 @@ import { Trash, Heart, Star, Clock, Tag, FileText, Send } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useNavigate } from 'react-router-dom';
+
 
 interface RecipeCardProps {
     recipe: Recipe | RecipeResponse;
@@ -14,10 +16,12 @@ interface RecipeCardProps {
     onFavoriteToggle?: (id: string) => Promise<void>;
     onRate?: (id: string, rating: number) => Promise<void>;
     onPublish?: (id: string) => Promise<void>;
-    onUnpublish?: (id: string) => Promise<void>; // <-- פונקציה חדשה לביטול פרסום
+    onUnpublish?: (id: string) => Promise<void>;
+    onLike?: (id: string) => Promise<void>; // ← הוסף את זה
     className?: string;
     onClick?: () => void;
 }
+
 
 /**
  * RecipeCard:
@@ -37,6 +41,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
     onClick
 }) => {
     // זיהוי האם זה מתכון מה־DB או תשובה מה־AI
+    const navigate = useNavigate();
     const recipeId = 'id' in recipe ? recipe.id : '';
     const isRTL = recipe.isRTL || false;
     const ingredientsLabel = recipe.ingredientsLabel || 'Ingredients';
@@ -109,7 +114,11 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
             transition={{ duration: 0.3 }}
             className="h-full"
         >
-            <Card className={`${cardClasses} h-full flex flex-col group relative`} onClick={onClick}>
+            <Card
+                className={`${cardClasses} h-full flex flex-col group relative`}
+                onClick={() => navigate(`/recipes/${recipe.id}`)}
+
+            >
                 <CardHeader
                     className={`
             bg-gradient-to-r

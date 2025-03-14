@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,30 +10,31 @@ import { useToast } from '@/components/ui/use-toast';
 import { Eye, EyeOff, Lock, Mail, UserPlus, Loader2, ChefHat, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const AuthPage: React.FC = () => {
-  const { signIn, signUp, resetPassword, user, isLoading, failedLoginAttempts, setFailedLoginAttempts } = useAuth();
+const Auth: React.FC = () => {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
+  const { signIn, signUp, session, failedLoginAttempts, setFailedLoginAttempts } = useAuth();
   const { toast } = useToast();
   
-  const [activeTab, setActiveTab] = useState('signin');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [username, setUsername] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+
   
-  // Redirect if already logged in
   useEffect(() => {
-    if (user) {
+    if (session) {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [session, navigate]);
   
-  // Show reset password view after multiple failed login attempts
   useEffect(() => {
     if (failedLoginAttempts >= 2) {
       setShowResetPassword(true);
@@ -77,8 +77,7 @@ const AuthPage: React.FC = () => {
       // Successful login will redirect via useEffect
     } catch (error) {
       console.error("Sign in error:", error);
-      // Failed login attempts are tracked in the signIn function
-    } finally {
+      setErrorMessage("Invalid email or password.");
       setIsSubmitting(false);
     }
   };
@@ -120,14 +119,16 @@ const AuthPage: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      await signUp(email, password, username.trim() || email.split('@')[0]);
+      await signup(email, password, username.trim() || email.split('@')[0]);
       toast({
         title: "Account Created",
         description: "Please check your email to verify your account.",
       });
-      setActiveTab('signin');
+      setMode("signin");
     } catch (error) {
       console.error("Sign up error:", error);
+      setErrorMessage("An error occurred while creating your account.");
+      setIsSubmitting(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -152,6 +153,8 @@ const AuthPage: React.FC = () => {
       setResetSent(true);
     } catch (error) {
       console.error("Reset password error:", error);
+      setErrorMessage("An error occurred while sending the reset link.");
+      setIsSubmitting(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -238,7 +241,7 @@ const AuthPage: React.FC = () => {
                 onClick={() => {
                   setShowResetPassword(false);
                   setFailedLoginAttempts(0);
-                  setActiveTab('signin');
+                  setMode("signin");
                 }}
               >
                 Back to Sign In
@@ -266,13 +269,13 @@ const AuthPage: React.FC = () => {
               </div>
               <CardTitle className="text-2xl text-center">Recipe Genius</CardTitle>
               <CardDescription className="text-center">
-                {activeTab === 'signin' 
+                {mode === "signin" 
                   ? "Sign in to access your personalized recipes" 
                   : "Create an account to save and share your recipes"}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="signin" value={activeTab} onValueChange={setActiveTab}>
+              <Tabs defaultValue="signin" value={mode} onValueChange={setMode}>
                 <TabsList className="grid w-full grid-cols-2 mb-4">
                   <TabsTrigger value="signin">Sign In</TabsTrigger>
                   <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -280,10 +283,10 @@ const AuthPage: React.FC = () => {
                 
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, x: activeTab === 'signin' ? -20 : 20 }}
+                    key={mode}
+                    initial={{ opacity: 0, x: mode === "signin" ? -20 : 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: activeTab === 'signin' ? 20 : -20 }}
+                    exit={{ opacity: 0, x: mode === "signin" ? 20 : -20 }}
                     transition={{ duration: 0.3 }}
                   >
                     <TabsContent value="signin" className="space-y-4">
@@ -481,4 +484,4 @@ const AuthPage: React.FC = () => {
   );
 };
 
-export default AuthPage;
+export default Auth;

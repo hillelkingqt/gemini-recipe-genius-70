@@ -1,4 +1,4 @@
-
+﻿
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +18,10 @@ import NotFound from "./pages/NotFound";
 import { motion, AnimatePresence } from "framer-motion";
 import ProtectedRoute from "./components/ProtectedRoute";
 import UserProfile from "./pages/UserProfile";
+import RecipeDetailPage from './components/RecipeDetail';
+import RecipePage from '@/pages/RecipePage';
+
+
 
 const queryClient = new QueryClient();
 
@@ -99,6 +103,11 @@ const AppRoutes = () => {
                         </ProtectedRoute>
                     }
                 />
+                <Route path="/recipes/:id" element={
+                    <ProtectedRoute>
+                        <RecipePage />
+                    </ProtectedRoute>
+                } />
                 <Route path="*" element={<NotFound />} />
             </Routes>
         </PageWrapper>

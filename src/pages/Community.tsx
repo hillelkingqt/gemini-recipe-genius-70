@@ -1,598 +1,425 @@
-﻿import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { Recipe } from '@/types/Recipe';
-import RecipeCard from '@/components/RecipeCard';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-    Search, ChevronsUpDown, Heart, X, Check, Filter,
-    Award, Clock, ChefHat, Sparkles, ThumbsUp
-} from 'lucide-react';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { motion, AnimatePresence } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
-import { Skeleton } from '@/components/ui/skeleton';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useRecipes } from '@/hooks/useRecipes';
+import RecipeCard from '@/components/RecipeCard';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Search, Plus, Upload, X, Heart, ThumbsUp } from 'lucide-react';
 
-const Community: React.FC = () => {
-    const [recipes, setRecipes] = useState<Recipe[]>([]);
-    const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogFooter,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { toast } from '@/hooks/use-toast';
+import { Recipe } from '@/types/Recipe';
+import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const Community = () => {
+    const { user, session } = useAuth();
+    const {
+        communityRecipes,
+        addRecipe,
+        toggleFavorite,
+        toggleLike,
+        isLoading,
+        fetchCommunityRecipes
+    } = useRecipes();
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedTags, setSelectedTags] = useState<string[]>([]);
-    const [selectedCuisine, setSelectedCuisine] = useState<string>('');
-    const [availableTags, setAvailableTags] = useState<string[]>([]);
-    const [availableCuisines, setAvailableCuisines] = useState<string[]>([]);
-    const [sortOption, setSortOption] = useState<string>('newest');
+    const [filteredRecipes, setFilteredRecipes] = useState(communityRecipes);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [newRecipeName, setNewRecipeName] = useState('');
+    const [newRecipeIngredients, setNewRecipeIngredients] = useState('');
+    const [newRecipeInstructions, setNewRecipeInstructions] = useState('');
+    const [isUploading, setIsUploading] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
     const navigate = useNavigate();
-    const { toast } = useToast();
-    const { user, profile } = useAuth();
+    const isMobile = useIsMobile();
+    const [isCommunityRecipeDetailsOpen, setIsCommunityRecipeDetailsOpen] = useState(false);
+    const [selectedCommunityRecipe, setSelectedCommunityRecipe] = useState<Recipe | null>(null);
+    const [isCommunityRecipeDetailsSavingAsFavorite, setIsCommunityRecipeDetailsSavingAsFavorite] = useState(false);
 
     useEffect(() => {
-        loadCommunityRecipes();
+        fetchCommunityRecipes();
     }, []);
 
-    const toggleFavorite = async (recipeId: string) => {
-        const { data: existing, error: fetchError } = await supabase
-            .from('favorites')
-            .select('id, name, ingredients, instructions, created_at, user_id, ...')
-            .eq('recipe_id', recipeId)
-            .eq('user_id', user.id)
-            .single();
+    useEffect(() => {
+        setFilteredRecipes(communityRecipes);
+    }, [communityRecipes]);
 
-        if (fetchError && fetchError.code !== 'PGRST116') {
-            throw fetchError;
-        }
+    useEffect(() => {
+        const filtered = communityRecipes.filter(recipe =>
+            recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            recipe.ingredients.some(ingredient => ingredient.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+        setFilteredRecipes(filtered);
+    }, [searchQuery, communityRecipes]);
 
-        if (existing) {
-            const { error: deleteError } = await supabase
-                .from('favorites')
-                .delete()
-                .eq('id', existing.id);
-            if (deleteError) throw deleteError;
-        } else {
-            const { error: insertError } = await supabase
-                .from('favorites')
-                .insert({ recipe_id: recipeId, user_id: user.id });
-            if (insertError) throw insertError;
-        }
-    };
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
 
-    const loadCommunityRecipes = async () => {
-        try {
-            setIsLoading(true);
+            reader.onloadend = () => {
+                if (typeof reader.result === 'string') {
+                    setSelectedImage(reader.result);
+                    setImagePreview(reader.result);
+                }
+            };
 
-            // Fetch all published recipes
-            const { data: recipesData, error: recipesError } = await supabase
-                .from('recipes')
-                .select('*')
-                .eq('status', 'published')
-                .order('published_at', { ascending: false });
-
-            console.log("recipesData", recipesData);
-
-            if (!recipesData) {
-                setRecipes([]);
-                setFilteredRecipes([]);
-                setIsLoading(false);
-                return;
-            }
-
-            // Process the recipes
-            const processedRecipes: Recipe[] = recipesData.map(recipe => ({
-                id: recipe.id,
-                user_id: recipe.user_id,
-                name: recipe.name,
-                ingredients: (recipe.ingredients as string[]) || [],
-                instructions: (recipe.instructions as string[]) || [],
-                createdAt: new Date(recipe.created_at),
-                isRTL: recipe.is_rtl || false,
-                ingredientsLabel: recipe.ingredients_label || 'Ingredients',
-                instructionsLabel: recipe.instructions_label || 'Instructions',
-                isRecipe: recipe.is_recipe || true,
-                content: recipe.content || '',
-                isFavorite: recipe.is_favorite || false,
-                tags: (recipe.tags as string[]) || [],
-                difficulty: (recipe.difficulty as 'easy' | 'medium' | 'hard') || 'medium',
-                estimatedTime: recipe.estimated_time || '',
-                calories: recipe.calories || '',
-                notes: recipe.notes || '',
-                rating: recipe.rating || 0,
-                status: recipe.status as 'draft' | 'accepted' | 'rejected' | 'published',
-                timeMarkers: (recipe.time_markers as { step: number; duration: number; description: string; }[]) || [],
-                prepTime: recipe.prep_time || '',
-                cookTime: recipe.cook_time || '',
-                totalTime: recipe.total_time || '',
-                servings: recipe.servings || 0,
-                nutritionInfo: recipe.nutrition_info as { calories?: string; protein?: string; carbs?: string; fat?: string; } || {},
-                seasonality: (recipe.seasonality as string[]) || [],
-                cuisine: recipe.cuisine || '',
-                likes: recipe.likes || 0,
-                author: recipe.author || '',
-                publishedAt: recipe.published_at ? new Date(recipe.published_at) : undefined,
-                imageBase64: recipe.image_base64 || '',
-            }));
-
-            // Extract unique tags and cuisines for filtering
-            const allTags = processedRecipes.flatMap(r => r.tags || []);
-            const uniqueTags = [...new Set(allTags)].filter(tag => tag);
-            setAvailableTags(uniqueTags);
-
-            const allCuisines = processedRecipes.map(r => r.cuisine || '');
-            const uniqueCuisines = [...new Set(allCuisines)].filter(cuisine => cuisine);
-            setAvailableCuisines(uniqueCuisines);
-
-            setRecipes(processedRecipes);
-            setFilteredRecipes(processedRecipes);
-
-        } catch (error) {
-            console.error('Error loading community recipes:', error);
-            toast({
-                variant: "destructive",
-                title: "Failed to Load Recipes",
-                description: "There was an error loading the community recipes."
-            });
-        } finally {
-            setIsLoading(false);
+            reader.readAsDataURL(file);
         }
     };
 
-    const handleLikeRecipe = async (recipe: Recipe) => {
-        if (!user) {
+    const handleImageButtonClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleRemoveImage = () => {
+        setSelectedImage(null);
+        setImagePreview(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const handleOpenModal = () => {
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setNewRecipeName('');
+        setNewRecipeIngredients('');
+        setNewRecipeInstructions('');
+        setSelectedImage(null);
+        setImagePreview(null);
+    };
+
+    const handleSubmit = async () => {
+        if (!newRecipeName || !newRecipeIngredients || !newRecipeInstructions) {
             toast({
-                variant: "default",
-                title: "Login Required",
-                description: "Please login to like recipes",
+                title: "Missing fields",
+                description: "Please fill in all fields.",
+                variant: "destructive"
             });
             return;
         }
-        const handleFavoriteToggle = async (recipe: Recipe) => {
+
+        setIsUploading(true);
+        try {
+            if (!user) {
+                console.error('User not authenticated');
+                return;
+            }
+
+            const recipeData = {
+                name: newRecipeName,
+                ingredients: newRecipeIngredients.split('\n'),
+                instructions: newRecipeInstructions.split('\n'),
+                user_id: user.id,
+                imageBase64: selectedImage || undefined,
+                isFromCommunity: true
+            };
+
+            await addRecipe(recipeData);
+            toast({
+                title: "Recipe added",
+                description: "Your recipe has been added to the community.",
+                variant: "default"
+            });
+            handleCloseModal();
+            await fetchCommunityRecipes();
+        } catch (error) {
+            console.error('Error adding recipe:', error);
+            toast({
+                title: "Error adding recipe",
+                description: "There was an error adding your recipe. Please try again.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleToggleFavorite = async (id: string) => {
+        if (!user) {
+            toast({
+                title: "Not authenticated",
+                description: "You must be logged in to save recipes.",
+                variant: "destructive"
+            });
+            return;
+        }
+        try {
+            await toggleFavorite(id);
+        } catch (error) {
+            console.error('Error toggling favorite:', error);
+            toast({
+                title: "Error saving recipe",
+                description: "There was an error saving this recipe. Please try again.",
+                variant: "destructive"
+            });
+        }
+    };
+
+    const handleLikeRecipe = async (id: string) => {
+        if (!user) {
+            toast({
+                title: "Not authenticated",
+                description: "You must be logged in to like recipes.",
+                variant: "destructive"
+            });
+            return;
+        }
+        try {
+            await toggleLike(id);
+        } catch (error) {
+            console.error('Error toggling like:', error);
+            toast({
+                title: "Error liking recipe",
+                description: "There was an error liking this recipe. Please try again.",
+                variant: "destructive"
+            });
+        }
+    };
+
+    const openCommunityRecipeDetails = (recipe: Recipe) => {
+        setSelectedCommunityRecipe(recipe);
+        setIsCommunityRecipeDetailsOpen(true);
+    };
+
+    const closeCommunityRecipeDetails = () => {
+        setSelectedCommunityRecipe(null);
+        setIsCommunityRecipeDetailsOpen(false);
+    };
+
+    const CommunityRecipeDetails = ({ recipe }: { recipe: Recipe }) => {
+        const [isSavingAsFavorite, setIsSavingAsFavorite] = useState(false);
+
+        const handleSaveAsFavorite = async () => {
             if (!user) {
                 toast({
-                    variant: "default",
-                    title: "Login Required",
-                    description: "Please login to favorite recipes",
+                    title: "Not authenticated",
+                    description: "You must be logged in to save recipes.",
+                    variant: "destructive"
                 });
                 return;
             }
 
-            const isFavoriteBefore = !!recipes.find(r => r.id === recipe.id)?.isFavorite;
-            const updatedRecipes = recipes.map(r =>
-                r.id === recipe.id ? { ...r, isFavorite: !isFavoriteBefore } : r
-            );
-            setRecipes(updatedRecipes);
-
+            setIsSavingAsFavorite(true);
             try {
                 await toggleFavorite(recipe.id);
                 toast({
-                    variant: "default",
-                    title: recipe.isFavorite ? "Removed from Favorites" : "Added to Favorites",
-                    description: recipe.isFavorite ? `"${recipe.name}" has been removed from your favorites.` : `"${recipe.name}" has been added to your favorites.`,
+                    title: "Recipe saved",
+                    description: "This recipe has been saved to your favorites.",
+                    variant: "default"
                 });
             } catch (error) {
-                console.error('Error toggling favorite:', error);
+                console.error('Error saving recipe:', error);
                 toast({
-                    variant: "destructive",
-                    title: "Action Failed",
-                    description: "There was an error processing your request."
+                    title: "Error saving recipe",
+                    description: "There was an error saving this recipe. Please try again.",
+                    variant: "destructive"
                 });
-                // Revert optimistic update on error
-                setRecipes(recipes.map(r => r.id === recipe.id ? { ...r, isFavorite: isFavoriteBefore } : r));
+            } finally {
+                setIsSavingAsFavorite(false);
             }
         };
 
-        try {
-            // Check if user has already liked this recipe
-            const { data: existingLike } = await supabase
-                .from('recipe_likes')
-                .select('*')
-                .eq('recipe_id', recipe.id)
-                .eq('user_id', user.id)
-                .single();
-
-            if (existingLike) {
-                // User already liked this recipe, so unlike it
-                await supabase
-                    .from('recipe_likes')
-                    .delete()
-                    .eq('recipe_id', recipe.id)
-                    .eq('user_id', user.id);
-
-                // Update the likes count in the recipes table
-                await supabase
-                    .from('recipes')
-                    .update({ likes: Math.max((recipe.likes || 1) - 1, 0) })
-                    .eq('id', recipe.id);
-
-                toast({
-                    variant: "default",
-                    title: "Recipe Unliked",
-                    description: `You've removed your like from "${recipe.name}"`,
-                });
-            } else {
-                // User has not liked this recipe yet, so add the like
-                await supabase
-                    .from('recipe_likes')
-                    .insert({
-                        recipe_id: recipe.id,
-                        user_id: user.id
-                    });
-
-                // Update the likes count in the recipes table
-                await supabase
-                    .from('recipes')
-                    .update({ likes: (recipe.likes || 0) + 1 })
-                    .eq('id', recipe.id);
-
-                toast({
-                    variant: "default",
-                    title: "Recipe Liked",
-                    description: `You've liked "${recipe.name}"`,
-                });
-            }
-
-            // Refresh the recipes
-            loadCommunityRecipes();
-
-        } catch (error) {
-            console.error('Error handling like:', error);
-            toast({
-                variant: "destructive",
-                title: "Action Failed",
-                description: "There was an error processing your request."
-            });
-        }
-    };
-
-    const handleViewRecipe = async (recipeId: string) => {
-        const recipeToView = recipes.find(r => r.id === recipeId);
-        if (!recipeToView || !user) return;
-
-        // אם זה המתכון של המשתמש עצמו – פשוט תעביר אותו ישירות
-        if (recipeToView.user_id === user.id) {
-            navigate(`/recipes?id=${recipeToView.id}`);
-            return;
-        }
-
-        // אחרת – תעתיק אותו ותעביר אותו לעותק
-        const {
-            name,
-            ingredients,
-            instructions,
-            isRTL,
-            ingredientsLabel,
-            instructionsLabel,
-            isRecipe,
-            content,
-            tags,
-            difficulty,
-            estimatedTime,
-            calories,
-            rating,
-            timeMarkers,
-            prepTime,
-            cookTime,
-            totalTime,
-            servings,
-            nutritionInfo,
-            seasonality,
-            cuisine,
-            imageBase64,
-        } = recipeToView;
-
-        const { data, error } = await supabase.from("recipes").insert({
-            name,
-            ingredients,
-            instructions,
-            is_rtl: isRTL,
-            ingredients_label: ingredientsLabel,
-            instructions_label: instructionsLabel,
-            is_recipe: isRecipe,
-            content,
-            tags,
-            difficulty,
-            estimated_time: estimatedTime,
-            calories,
-            rating,
-            time_markers: timeMarkers,
-            prep_time: prepTime,
-            cook_time: cookTime,
-            total_time: totalTime,
-            servings,
-            nutrition_info: nutritionInfo,
-            seasonality,
-            cuisine,
-            image_base64: imageBase64,
-            user_id: user.id,
-            status: 'draft',
-            created_at: new Date().toISOString()
-        }).select().single();
-
-        if (error || !data) {
-            toast({
-                title: "Error",
-                description: "Failed to copy recipe",
-                variant: "destructive"
-            });
-            console.error(error);
-            return;
-        }
-
-        navigate(`/recipes?id=${data.id}`);
-    };
-
-    // Apply search and filters
-    useEffect(() => {
-        let filtered = [...recipes];
-
-        // Apply search filter
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            filtered = filtered.filter(recipe =>
-                recipe.name.toLowerCase().includes(query) ||
-                recipe.tags?.some(tag => tag.toLowerCase().includes(query)) ||
-                recipe.cuisine?.toLowerCase().includes(query) ||
-                recipe.ingredients?.some(ing => ing.toLowerCase().includes(query))
-            );
-        }
-
-        // Apply tag filters
-        if (selectedTags.length > 0) {
-            filtered = filtered.filter(recipe =>
-                selectedTags.every(tag => recipe.tags?.includes(tag))
-            );
-        }
-
-        // Apply cuisine filter
-        if (selectedCuisine) {
-            filtered = filtered.filter(recipe =>
-                recipe.cuisine === selectedCuisine
-            );
-        }
-
-        // Apply sorting
-        if (sortOption === 'newest') {
-            filtered.sort((a, b) => (b.publishedAt?.getTime() || 0) - (a.publishedAt?.getTime() || 0));
-        } else if (sortOption === 'oldest') {
-            filtered.sort((a, b) => (a.publishedAt?.getTime() || 0) - (b.publishedAt?.getTime() || 0));
-        } else if (sortOption === 'most-liked') {
-            filtered.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-        } else if (sortOption === 'alphabetical') {
-            filtered.sort((a, b) => a.name.localeCompare(b.name));
-        }
-
-        setFilteredRecipes(filtered);
-    }, [recipes, searchQuery, selectedTags, selectedCuisine, sortOption]);
-
-    const handleToggleTag = (tag: string) => {
-        setSelectedTags(prev =>
-            prev.includes(tag)
-                ? prev.filter(t => t !== tag)
-                : [...prev, tag]
+        return (
+            <DialogContent className="max-w-2xl dark:bg-gray-800 dark:text-gray-100">
+                <DialogHeader>
+                    <DialogTitle>{recipe.name}</DialogTitle>
+                    <DialogDescription>
+                        {recipe.ingredients.length} ingredients | {recipe.instructions.length} steps
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="col-span-4">
+                        <h3 className="text-lg font-semibold mb-2">Ingredients:</h3>
+                        <ul className="list-disc list-inside">
+                            {recipe.ingredients.map((ingredient, index) => (
+                                <li key={index}>{ingredient}</li>
+                            ))}
+                        </ul>
+                    </div>
+                    <div className="col-span-4">
+                        <h3 className="text-lg font-semibold mb-2">Instructions:</h3>
+                        <ol className="list-decimal list-inside">
+                            {recipe.instructions.map((instruction, index) => (
+                                <li key={index}>{instruction}</li>
+                            ))}
+                        </ol>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button type="button" onClick={handleSaveAsFavorite} disabled={isSavingAsFavorite}>
+                        {isSavingAsFavorite ? "Saving..." : "Save to Favorites"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
         );
     };
 
-    const handleClearFilters = () => {
-        setSearchQuery('');
-        setSelectedTags([]);
-        setSelectedCuisine('');
-        setSortOption('newest');
-    };
-
     return (
-        <div className="container mx-auto py-8 px-4 max-w-7xl">
-            <motion.div
-                className="text-center mb-8"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-            >
-                <h1 className="text-3xl font-bold text-recipe-green">Community Recipes</h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    Explore delicious recipes shared by our community
-                </p>
-            </motion.div>
-
-            <motion.div
-                className="flex flex-col md:flex-row gap-4 mb-6"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.1 }}
-            >
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                        placeholder="Search recipes, ingredients, tags..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10"
-                    />
+        <div className="container mx-auto py-8">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold">Community Recipes</h1>
+                <div className="flex items-center space-x-4">
+                    <div className="relative">
+                        <Input
+                            type="text"
+                            placeholder="Search recipes..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10 pr-4 py-2 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500 dark:text-gray-400" />
+                    </div>
+                    {session && user && (
+                        <Button onClick={handleOpenModal} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Recipe
+                        </Button>
+                    )}
                 </div>
+            </div>
 
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex gap-2">
-                            <Filter className="h-4 w-4" />
-                            <span className="hidden sm:inline">Filter</span>
-                            {(selectedTags.length > 0 || selectedCuisine) && (
-                                <Badge variant="secondary" className="ml-2">
-                                    {selectedTags.length + (selectedCuisine ? 1 : 0)}
-                                </Badge>
-                            )}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56">
-                        <div className="p-2">
-                            <h4 className="mb-2 text-sm font-medium">Cuisine</h4>
-                            <div className="mb-4">
-                                <select
-                                    className="w-full p-2 rounded border dark:bg-gray-800"
-                                    value={selectedCuisine}
-                                    onChange={(e) => setSelectedCuisine(e.target.value)}
-                                >
-                                    <option value="">All Cuisines</option>
-                                    {availableCuisines.map(cuisine => (
-                                        <option key={cuisine} value={cuisine}>{cuisine}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <h4 className="mb-2 text-sm font-medium">Tags</h4>
-                            <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto mb-2">
-                                {availableTags.map(tag => (
-                                    <Badge
-                                        key={tag}
-                                        variant={selectedTags.includes(tag) ? "default" : "outline"}
-                                        className="cursor-pointer"
-                                        onClick={() => handleToggleTag(tag)}
-                                    >
-                                        {tag}
-                                        {selectedTags.includes(tag) && <X className="ml-1 h-3 w-3" />}
-                                    </Badge>
-                                ))}
-                            </div>
-
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="w-full mt-2"
-                                onClick={handleClearFilters}
-                            >
-                                Clear Filters
-                            </Button>
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                <DialogContent className="max-w-2xl dark:bg-gray-800 dark:text-gray-100">
+                    <DialogHeader>
+                        <DialogTitle>Add New Recipe</DialogTitle>
+                        <DialogDescription>
+                            Share your culinary masterpiece with the community!
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="col-span-4">
+                            <Label htmlFor="name">Recipe Name</Label>
+                            <Input
+                                type="text"
+                                id="name"
+                                placeholder="Enter recipe name"
+                                value={newRecipeName}
+                                onChange={(e) => setNewRecipeName(e.target.value)}
+                                className="mt-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            />
                         </div>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex gap-2">
-                            <ChevronsUpDown className="h-4 w-4" />
-                            <span className="hidden sm:inline">Sort</span>
+                        <div className="col-span-4">
+                            <Label htmlFor="ingredients">Ingredients</Label>
+                            <Textarea
+                                id="ingredients"
+                                placeholder="Enter ingredients, each on a new line"
+                                value={newRecipeIngredients}
+                                onChange={(e) => setNewRecipeIngredients(e.target.value)}
+                                className="mt-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white resize-none"
+                            />
+                        </div>
+                        <div className="col-span-4">
+                            <Label htmlFor="instructions">Instructions</Label>
+                            <Textarea
+                                id="instructions"
+                                placeholder="Enter instructions, each on a new line"
+                                value={newRecipeInstructions}
+                                onChange={(e) => setNewRecipeInstructions(e.target.value)}
+                                className="mt-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white resize-none"
+                            />
+                        </div>
+                        <div className="col-span-4">
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileSelect}
+                                accept="image/*"
+                                className="hidden"
+                            />
+                            <Button
+                                variant="outline"
+                                onClick={handleImageButtonClick}
+                                className="mb-2"
+                            >
+                                <Upload className="mr-2 h-4 w-4" />
+                                Upload Image
+                            </Button>
+                            {imagePreview && (
+                                <div className="mb-4 relative">
+                                    <img
+                                        src={imagePreview}
+                                        alt="Upload preview"
+                                        className="h-24 object-cover rounded-md"
+                                    />
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        className="absolute -top-2 -right-2 rounded-full p-0 h-6 w-6"
+                                        onClick={handleRemoveImage}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" onClick={handleSubmit} disabled={isUploading}>
+                            {isUploading ? "Uploading..." : "Add Recipe"}
                         </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem
-                            onClick={() => setSortOption('newest')}
-                            className={sortOption === 'newest' ? 'bg-accent' : ''}
-                        >
-                            <Clock className="mr-2 h-4 w-4" />
-                            <span>Newest</span>
-                            {sortOption === 'newest' && <Check className="ml-2 h-4 w-4" />}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onClick={() => setSortOption('most-liked')}
-                            className={sortOption === 'most-liked' ? 'bg-accent' : ''}
-                        >
-                            <ThumbsUp className="mr-2 h-4 w-4" />
-                            <span>Most Liked</span>
-                            {sortOption === 'most-liked' && <Check className="ml-2 h-4 w-4" />}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onClick={() => setSortOption('alphabetical')}
-                            className={sortOption === 'alphabetical' ? 'bg-accent' : ''}
-                        >
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            <span>Alphabetical</span>
-                            {sortOption === 'alphabetical' && <Check className="ml-2 h-4 w-4" />}
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </motion.div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {isLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[...Array(6)].map((_, index) => (
-                        <div key={index} className="border rounded-lg p-4 h-96">
-                            <Skeleton className="h-40 w-full mb-4" />
-                            <Skeleton className="h-6 w-3/4 mb-2" />
-                            <Skeleton className="h-4 w-1/2 mb-4" />
-                            <Skeleton className="h-20 w-full mb-4" />
-                            <div className="flex justify-between">
-                                <Skeleton className="h-8 w-20" />
-                                <Skeleton className="h-8 w-20" />
+                    {[...Array(6)].map((_, i) => (
+                        <div key={i} className="space-y-3">
+                            <Skeleton className="h-40 w-full rounded-md" />
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-3/4" />
+                                <Skeleton className="h-4 w-1/2" />
                             </div>
                         </div>
                     ))}
                 </div>
             ) : (
-                <>
-                    {filteredRecipes.length === 0 ? (
-                        <motion.div
-                            className="text-center py-16 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 0.5 }}
-                        >
-                            <ChefHat className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-                            <h3 className="text-xl font-semibold mb-2">No Recipes Found</h3>
-                            <p className="text-gray-500 dark:text-gray-400 mb-4">
-                                {searchQuery || selectedTags.length > 0 || selectedCuisine
-                                    ? "No recipes match your current filters. Try adjusting your search criteria."
-                                    : "There are no published recipes in the community yet. Be the first to share a recipe!"}
-                            </p>
-                            {(searchQuery || selectedTags.length > 0 || selectedCuisine) && (
-                                <Button
-                                    variant="outline"
-                                    onClick={handleClearFilters}
-                                >
-                                    Clear All Filters
-                                </Button>
-                            )}
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 0.5 }}
-                        >
-                            <AnimatePresence>
-                                {filteredRecipes.map((recipe, index) => (
-                                    <motion.div
-                                        key={recipe.id}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        transition={{ duration: 0.3, delay: index * 0.05 }}
-                                        className="relative border rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-300"
-                                    >
-                                        <div className="group" onClick={() => handleViewRecipe(recipe.id)}>
-                                            <RecipeCard
-                                                recipe={recipe}
-                                                showActions={false}
-                                                onDelete={() => { }}
-                                                className="cursor-pointer"
-                                            />
-                                            <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                                        </div>
-
-                                        <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 border-t">
-                                            <div className="flex items-center gap-2">
-                                                {/* Like button removed */}
-                                            </div>
-
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-sm text-gray-600 dark:text-gray-400">
-                                                    by {recipe.author}
-                                                </span>
-                                                {/* Favorite button removed */}
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
-                        </motion.div>
-                    )}
-                </>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <AnimatePresence>
+                        {filteredRecipes.map(recipe => (
+                            <motion.div
+                                key={recipe.id}
+                                className="h-full"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <RecipeCard
+                                    key={recipe.id}
+                                    recipe={recipe}
+                                    showActions={false}
+                                    className="h-full cursor-pointer"
+                                    onClick={() => {
+                                        setSelectedCommunityRecipe(recipe);
+                                        setIsCommunityRecipeDetailsOpen(true);
+                                    }}
+                                    onFavoriteToggle={handleToggleFavorite}
+                                    onLike={handleLikeRecipe}
+                                />
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                </div>
             )}
         </div>
     );

@@ -1,475 +1,573 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { UserProfile } from '@/types/Recipe';
-import { useToast } from '@/components/ui/use-toast';
-import { motion } from 'framer-motion';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { UserCog, Save, Plus, X, User } from 'lucide-react';
+import { Loader2, ChefHat, User, Utensils, Save, PlusCircle, X, AlertCircle, Tag, Heart, User2, Edit, LogOut, Leaf, Banana } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { motion } from 'framer-motion';
+import { UserProfile as ProfileType } from '@/types/Recipe';
 
-const formatUsername = (email: string) => {
-  return email.split('@')[0];
-};
-
-const UserProfilePage: React.FC = () => {
-  const { user, profile, updateProfile } = useAuth();
-  const { toast } = useToast();
-  
-  const [formState, setFormState] = useState<Partial<UserProfile>>({
-    username: '',
-    dietaryRestrictions: [],
-    allergies: [],
-    favoriteIngredients: [],
-    dislikedIngredients: [],
-    preferredCuisines: [],
-    cookingSkillLevel: 'intermediate',
-    healthGoals: [],
-    profileNotes: '',
-  });
-  
-  const [newItem, setNewItem] = useState({
-    dietaryRestrictions: '',
-    allergies: '',
-    favoriteIngredients: '',
-    dislikedIngredients: '',
-    preferredCuisines: '',
-    healthGoals: '',
-  });
-  
+const UserProfile: React.FC = () => {
+  const { user, profile, updateUserProfile, signOut } = useAuth();
+  const [editMode, setEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
+  const [formValues, setFormValues] = useState<Partial<ProfileType>>({});
+  const [newDietaryRestriction, setNewDietaryRestriction] = useState('');
+  const [newAllergy, setNewAllergy] = useState('');
+  const [newFavoriteIngredient, setNewFavoriteIngredient] = useState('');
+  const [newDislikedIngredient, setNewDislikedIngredient] = useState('');
+  const [newPreferredCuisine, setNewPreferredCuisine] = useState('');
+  const [newHealthGoal, setNewHealthGoal] = useState('');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const isMobile = useIsMobile();
+
   useEffect(() => {
     if (profile) {
-      setFormState({
-        username: profile.username || formatUsername(user?.email || ''),
-        dietaryRestrictions: profile.dietaryRestrictions || [],
-        allergies: profile.allergies || [],
-        favoriteIngredients: profile.favoriteIngredients || [],
-        dislikedIngredients: profile.dislikedIngredients || [],
-        preferredCuisines: profile.preferredCuisines || [],
-        cookingSkillLevel: profile.cookingSkillLevel || 'intermediate',
-        healthGoals: profile.healthGoals || [],
-        profileNotes: profile.profileNotes || '',
-      });
-    } else if (user) {
-      setFormState({
-        username: formatUsername(user.email || ''),
-        dietaryRestrictions: [],
-        allergies: [],
-        favoriteIngredients: [],
-        dislikedIngredients: [],
-        preferredCuisines: [],
-        cookingSkillLevel: 'intermediate',
-        healthGoals: [],
-        profileNotes: '',
+      setFormValues({
+        username: profile.username,
+        dietaryRestrictions: [...(profile.dietaryRestrictions || [])],
+        allergies: [...(profile.allergies || [])],
+        favoriteIngredients: [...(profile.favoriteIngredients || [])],
+        dislikedIngredients: [...(profile.dislikedIngredients || [])],
+        preferredCuisines: [...(profile.preferredCuisines || [])],
+        cookingSkillLevel: profile.cookingSkillLevel,
+        healthGoals: [...(profile.healthGoals || [])],
+        profileNotes: profile.profileNotes,
+        mentionInTitle: profile.mentionInTitle
       });
     }
-  }, [profile, user]);
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormState(prev => ({ ...prev, [name]: value }));
+  }, [profile]);
+
+  const handleInputChange = (field: keyof ProfileType, value: any) => {
+    setFormValues(prev => ({ ...prev, [field]: value }));
   };
-  
-  const handleSelectChange = (value: string, field: string) => {
-    setFormState(prev => ({ ...prev, [field]: value }));
-  };
-  
-  const handleAddItem = (field: keyof typeof newItem) => {
-    if (!newItem[field].trim()) return;
+
+  const addItem = (field: keyof ProfileType, value: string, setter: (value: string) => void) => {
+    if (!value.trim()) return;
     
-    setFormState(prev => ({
-      ...prev,
-      [field]: [...(prev[field as keyof typeof prev] as string[] || []), newItem[field]]
-    }));
+    setFormValues(prev => {
+      const currentArray = prev[field] as string[] || [];
+      if (!currentArray.includes(value)) {
+        return { ...prev, [field]: [...currentArray, value.trim()] };
+      }
+      return prev;
+    });
     
-    setNewItem(prev => ({ ...prev, [field]: '' }));
+    setter('');
   };
-  
-  const handleRemoveItem = (field: string, index: number) => {
-    setFormState(prev => ({
-      ...prev,
-      [field]: (prev[field as keyof typeof prev] as string[]).filter((_, i) => i !== index)
-    }));
+
+  const removeItem = (field: keyof ProfileType, index: number) => {
+    setFormValues(prev => {
+      const currentArray = prev[field] as string[] || [];
+      return {
+        ...prev,
+        [field]: currentArray.filter((_, i) => i !== index)
+      };
+    });
   };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+
+  const handleSave = async () => {
+    if (!user) return;
+    
     setIsSaving(true);
-    
     try {
-      await updateProfile({
-        ...formState,
-        updated_at: new Date().toISOString()
-      });
-      
+      await updateUserProfile(formValues);
+      setEditMode(false);
       toast({
-        title: 'Profile Updated',
-        description: 'Your profile preferences have been saved successfully.'
+        title: "Profile updated",
+        description: "Your profile has been successfully updated.",
       });
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
-        title: 'Update Failed',
-        description: 'There was an error updating your profile.',
-        variant: 'destructive'
+        variant: "destructive",
+        title: "Update failed",
+        description: "There was an error updating your profile. Please try again."
       });
     } finally {
       setIsSaving(false);
     }
   };
-  
-  if (!user) {
+
+  const handleCancel = () => {
+    if (profile) {
+      setFormValues({
+        username: profile.username,
+        dietaryRestrictions: [...(profile.dietaryRestrictions || [])],
+        allergies: [...(profile.allergies || [])],
+        favoriteIngredients: [...(profile.favoriteIngredients || [])],
+        dislikedIngredients: [...(profile.dislikedIngredients || [])],
+        preferredCuisines: [...(profile.preferredCuisines || [])],
+        cookingSkillLevel: profile.cookingSkillLevel,
+        healthGoals: [...(profile.healthGoals || [])],
+        profileNotes: profile.profileNotes,
+        mentionInTitle: profile.mentionInTitle
+      });
+    }
+    setEditMode(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast({
+        variant: "destructive",
+        title: "Logout failed",
+        description: "There was an error logging out. Please try again."
+      });
+    }
+  };
+
+  if (!user || !profile) {
     return (
-      <div className="flex items-center justify-center h-[80vh]">
-        <Card className="w-[400px]">
-          <CardHeader>
-            <CardTitle>Not Logged In</CardTitle>
-            <CardDescription>Please log in to view and edit your profile.</CardDescription>
-          </CardHeader>
-        </Card>
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-recipe-green" />
       </div>
     );
   }
-  
+
   return (
-    <div className="container mx-auto py-6 px-4 max-w-4xl">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="flex items-center mb-6">
-          <UserCog className="h-8 w-8 mr-3 text-recipe-green" />
-          <h1 className="text-3xl font-bold">Your Profile</h1>
+    <motion.div 
+      className="container mx-auto px-4 py-8 max-w-5xl"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center">
+          <User2 className="mr-2 h-6 w-6 text-recipe-green" />
+          <h1 className="text-2xl font-bold">User Profile</h1>
         </div>
-        <Card className="mb-8 overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-recipe-green/10 to-recipe-cream/20 dark:from-recipe-green/20 dark:to-transparent">
-            <div className="flex items-center">
-              <Avatar className="h-16 w-16 mr-4 border-2 border-recipe-green shadow-md">
-                <AvatarImage src={profile?.avatarUrl || ''} />
-                <AvatarFallback className="bg-recipe-green text-white text-xl">
-                  {(profile?.username || user.email || 'U').charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <CardTitle className="text-2xl">{profile?.username || formatUsername(user.email || '')}</CardTitle>
-                <CardDescription>{user.email}</CardDescription>
-              </div>
-            </div>
+        <div className="flex gap-2">
+          {!editMode ? (
+            <Button onClick={() => setEditMode(true)} className="flex items-center">
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Profile
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={isSaving} className="bg-recipe-green hover:bg-recipe-green/90">
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save Changes
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="col-span-1">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <User className="mr-2 h-5 w-5 text-recipe-green" />
+              Basic Information
+            </CardTitle>
           </CardHeader>
-          
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-6 pt-6">
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">Basic Information</h3>
-                <Separator />
-                
-                <div className="space-y-4 mt-4">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="username" className="text-sm font-medium">
-                        Username
-                      </label>
-                      <Input
-                        id="username"
-                        name="username"
-                        value={formState.username || ''}
-                        onChange={handleInputChange}
-                        className="transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                      />
-                    </div>
-                  </div>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              {editMode ? (
+                <Input
+                  id="username"
+                  value={formValues.username || ''}
+                  onChange={(e) => handleInputChange('username', e.target.value)}
+                  placeholder="Enter your username"
+                />
+              ) : (
+                <div className="text-lg font-medium">{profile.username}</div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="text-gray-600 dark:text-gray-400">{user.email}</div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="cookingSkillLevel">Cooking Skill Level</Label>
+              {editMode ? (
+                <Select
+                  value={formValues.cookingSkillLevel || 'intermediate'}
+                  onValueChange={(value) => handleInputChange('cookingSkillLevel', value as 'beginner' | 'intermediate' | 'advanced')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your cooking level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="capitalize text-gray-600 dark:text-gray-400">
+                  {profile.cookingSkillLevel || 'Intermediate'}
                 </div>
+              )}
+            </div>
+            
+            <div className="pt-4">
+              <Button
+                variant="outline" 
+                className="w-full text-destructive border-destructive hover:bg-destructive/10"
+                onClick={() => setShowLogoutConfirm(!showLogoutConfirm)}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+              
+              {showLogoutConfirm && (
+                <motion.div 
+                  className="mt-2 p-3 bg-destructive/10 rounded-md"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <p className="text-sm mb-2 text-destructive">Are you sure you want to log out?</p>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="destructive" onClick={handleLogout}>Yes, logout</Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowLogoutConfirm(false)}>Cancel</Button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1 lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Leaf className="mr-2 h-5 w-5 text-recipe-green" />
+              Dietary Preferences
+            </CardTitle>
+            <CardDescription>
+              These preferences will be used by the AI to suggest recipes tailored to your needs
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="mentionInTitle" className="font-medium">
+                  Show preferences in recipe titles
+                </Label>
+                {editMode ? (
+                  <Switch
+                    id="mentionInTitle"
+                    checked={formValues.mentionInTitle}
+                    onCheckedChange={(checked) => handleInputChange('mentionInTitle', checked)}
+                  />
+                ) : (
+                  <Badge variant={profile.mentionInTitle ? "default" : "outline"}>
+                    {profile.mentionInTitle ? "Enabled" : "Disabled"}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                When disabled, AI will still respect your preferences but won't include them in recipe titles (e.g. "Pizza" instead of "Vegetarian Pizza without Garlic")
+              </p>
+            </div>
+            
+            <Separator />
+
+            <div className="space-y-3">
+              <Label>Dietary Restrictions</Label>
+              <div className="flex flex-wrap gap-2">
+                {(formValues.dietaryRestrictions || []).map((item, index) => (
+                  <Badge key={index} className="flex items-center gap-1 px-3 py-1 bg-recipe-green/20 text-recipe-green border-recipe-green/30">
+                    {item}
+                    {editMode && (
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-recipe-red" 
+                        onClick={() => removeItem('dietaryRestrictions', index)} 
+                      />
+                    )}
+                  </Badge>
+                ))}
               </div>
               
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">Cooking Preferences</h3>
-                <Separator />
-                
-                <div className="space-y-4 mt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="cookingSkillLevel" className="text-sm font-medium">
-                        Cooking Skill Level
-                      </label>
-                      <Select
-                        value={formState.cookingSkillLevel}
-                        onValueChange={(value) => handleSelectChange(value, 'cookingSkillLevel')}
-                      >
-                        <SelectTrigger className="w-full transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50">
-                          <SelectValue placeholder="Select your cooking skill level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="beginner">Beginner</SelectItem>
-                          <SelectItem value="intermediate">Intermediate</SelectItem>
-                          <SelectItem value="advanced">Advanced</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      Dietary Restrictions
-                    </label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {formState.dietaryRestrictions?.map((item, index) => (
-                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                          {item}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem('dietaryRestrictions', index)}
-                            className="ml-1 h-4 w-4 rounded-full inline-flex items-center justify-center hover:bg-muted"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        value={newItem.dietaryRestrictions}
-                        onChange={(e) => setNewItem({ ...newItem, dietaryRestrictions: e.target.value })}
-                        placeholder="E.g., Vegetarian, Vegan, Keto..."
-                        className="transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                      />
-                      <Button 
-                        type="button" 
-                        onClick={() => handleAddItem('dietaryRestrictions')}
-                        className="bg-recipe-green hover:bg-recipe-green/90"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      Allergies
-                    </label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {formState.allergies?.map((item, index) => (
-                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                          {item}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem('allergies', index)}
-                            className="ml-1 h-4 w-4 rounded-full inline-flex items-center justify-center hover:bg-muted"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        value={newItem.allergies}
-                        onChange={(e) => setNewItem({ ...newItem, allergies: e.target.value })}
-                        placeholder="E.g., Peanuts, Shellfish, Gluten..."
-                        className="transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                      />
-                      <Button 
-                        type="button" 
-                        onClick={() => handleAddItem('allergies')}
-                        className="bg-recipe-green hover:bg-recipe-green/90"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      Favorite Ingredients
-                    </label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {formState.favoriteIngredients?.map((item, index) => (
-                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                          {item}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem('favoriteIngredients', index)}
-                            className="ml-1 h-4 w-4 rounded-full inline-flex items-center justify-center hover:bg-muted"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        value={newItem.favoriteIngredients}
-                        onChange={(e) => setNewItem({ ...newItem, favoriteIngredients: e.target.value })}
-                        placeholder="E.g., Garlic, Olive Oil, Tomatoes..."
-                        className="transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                      />
-                      <Button 
-                        type="button" 
-                        onClick={() => handleAddItem('favoriteIngredients')}
-                        className="bg-recipe-green hover:bg-recipe-green/90"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      Disliked Ingredients
-                    </label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {formState.dislikedIngredients?.map((item, index) => (
-                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                          {item}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem('dislikedIngredients', index)}
-                            className="ml-1 h-4 w-4 rounded-full inline-flex items-center justify-center hover:bg-muted"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        value={newItem.dislikedIngredients}
-                        onChange={(e) => setNewItem({ ...newItem, dislikedIngredients: e.target.value })}
-                        placeholder="E.g., Cilantro, Blue Cheese, Olives..."
-                        className="transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                      />
-                      <Button 
-                        type="button" 
-                        onClick={() => handleAddItem('dislikedIngredients')}
-                        className="bg-recipe-green hover:bg-recipe-green/90"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      Preferred Cuisines
-                    </label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {formState.preferredCuisines?.map((item, index) => (
-                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                          {item}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem('preferredCuisines', index)}
-                            className="ml-1 h-4 w-4 rounded-full inline-flex items-center justify-center hover:bg-muted"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        value={newItem.preferredCuisines}
-                        onChange={(e) => setNewItem({ ...newItem, preferredCuisines: e.target.value })}
-                        placeholder="E.g., Italian, Thai, Mexican..."
-                        className="transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                      />
-                      <Button 
-                        type="button" 
-                        onClick={() => handleAddItem('preferredCuisines')}
-                        className="bg-recipe-green hover:bg-recipe-green/90"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      Health Goals
-                    </label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {formState.healthGoals?.map((item, index) => (
-                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                          {item}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem('healthGoals', index)}
-                            className="ml-1 h-4 w-4 rounded-full inline-flex items-center justify-center hover:bg-muted"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        value={newItem.healthGoals}
-                        onChange={(e) => setNewItem({ ...newItem, healthGoals: e.target.value })}
-                        placeholder="E.g., Weight Loss, Muscle Building, Heart Health..."
-                        className="transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                      />
-                      <Button 
-                        type="button" 
-                        onClick={() => handleAddItem('healthGoals')}
-                        className="bg-recipe-green hover:bg-recipe-green/90"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label htmlFor="profileNotes" className="text-sm font-medium">
-                      Additional Notes
-                    </label>
-                    <Textarea
-                      id="profileNotes"
-                      name="profileNotes"
-                      value={formState.profileNotes || ''}
-                      onChange={handleInputChange}
-                      placeholder="Any other preferences or notes you'd like the AI to consider..."
-                      className="min-h-[100px] transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                    />
-                  </div>
+              {editMode && (
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={newDietaryRestriction}
+                    onChange={(e) => setNewDietaryRestriction(e.target.value)}
+                    placeholder="E.g., Vegetarian, Vegan, Keto"
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addItem('dietaryRestrictions', newDietaryRestriction, setNewDietaryRestriction);
+                      }
+                    }}
+                  />
+                  <Button 
+                    type="button" 
+                    onClick={() => addItem('dietaryRestrictions', newDietaryRestriction, setNewDietaryRestriction)}
+                    variant="outline"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
                 </div>
-              </div>
-            </CardContent>
+              )}
+            </div>
             
-            <CardFooter className="bg-muted/20 flex justify-end space-x-2 pt-6">
-              <Button
-                type="submit"
-                className="bg-recipe-green hover:bg-recipe-green/90 transition-all"
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <div className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Saving...
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Profile
-                  </div>
-                )}
-              </Button>
-            </CardFooter>
-          </form>
+            <div className="space-y-3">
+              <Label>Allergies</Label>
+              <div className="flex flex-wrap gap-2">
+                {(formValues.allergies || []).map((item, index) => (
+                  <Badge key={index} className="flex items-center gap-1 px-3 py-1 bg-recipe-red/20 text-recipe-red border-recipe-red/30">
+                    {item}
+                    {editMode && (
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-recipe-red" 
+                        onClick={() => removeItem('allergies', index)} 
+                      />
+                    )}
+                  </Badge>
+                ))}
+              </div>
+              
+              {editMode && (
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={newAllergy}
+                    onChange={(e) => setNewAllergy(e.target.value)}
+                    placeholder="E.g., Nuts, Shellfish, Dairy"
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addItem('allergies', newAllergy, setNewAllergy);
+                      }
+                    }}
+                  />
+                  <Button 
+                    type="button" 
+                    onClick={() => addItem('allergies', newAllergy, setNewAllergy)}
+                    variant="outline"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-3">
+              <Label>Favorite Ingredients</Label>
+              <div className="flex flex-wrap gap-2">
+                {(formValues.favoriteIngredients || []).map((item, index) => (
+                  <Badge key={index} className="flex items-center gap-1 px-3 py-1 bg-recipe-orange/20 text-recipe-orange border-recipe-orange/30">
+                    {item}
+                    {editMode && (
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-recipe-red" 
+                        onClick={() => removeItem('favoriteIngredients', index)} 
+                      />
+                    )}
+                  </Badge>
+                ))}
+              </div>
+              
+              {editMode && (
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={newFavoriteIngredient}
+                    onChange={(e) => setNewFavoriteIngredient(e.target.value)}
+                    placeholder="E.g., Avocado, Chickpeas, Garlic"
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addItem('favoriteIngredients', newFavoriteIngredient, setNewFavoriteIngredient);
+                      }
+                    }}
+                  />
+                  <Button 
+                    type="button" 
+                    onClick={() => addItem('favoriteIngredients', newFavoriteIngredient, setNewFavoriteIngredient)}
+                    variant="outline"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-3">
+              <Label>Disliked Ingredients</Label>
+              <div className="flex flex-wrap gap-2">
+                {(formValues.dislikedIngredients || []).map((item, index) => (
+                  <Badge key={index} className="flex items-center gap-1 px-3 py-1 bg-gray-200 text-gray-700 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
+                    {item}
+                    {editMode && (
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-recipe-red" 
+                        onClick={() => removeItem('dislikedIngredients', index)} 
+                      />
+                    )}
+                  </Badge>
+                ))}
+              </div>
+              
+              {editMode && (
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={newDislikedIngredient}
+                    onChange={(e) => setNewDislikedIngredient(e.target.value)}
+                    placeholder="E.g., Cilantro, Bell Peppers, Olives"
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addItem('dislikedIngredients', newDislikedIngredient, setNewDislikedIngredient);
+                      }
+                    }}
+                  />
+                  <Button 
+                    type="button" 
+                    onClick={() => addItem('dislikedIngredients', newDislikedIngredient, setNewDislikedIngredient)}
+                    variant="outline"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-3">
+              <Label>Preferred Cuisines</Label>
+              <div className="flex flex-wrap gap-2">
+                {(formValues.preferredCuisines || []).map((item, index) => (
+                  <Badge key={index} className="flex items-center gap-1 px-3 py-1 bg-recipe-purple/20 text-recipe-purple border-recipe-purple/30">
+                    {item}
+                    {editMode && (
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-recipe-red" 
+                        onClick={() => removeItem('preferredCuisines', index)} 
+                      />
+                    )}
+                  </Badge>
+                ))}
+              </div>
+              
+              {editMode && (
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={newPreferredCuisine}
+                    onChange={(e) => setNewPreferredCuisine(e.target.value)}
+                    placeholder="E.g., Italian, Thai, Mexican"
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addItem('preferredCuisines', newPreferredCuisine, setNewPreferredCuisine);
+                      }
+                    }}
+                  />
+                  <Button 
+                    type="button" 
+                    onClick={() => addItem('preferredCuisines', newPreferredCuisine, setNewPreferredCuisine)}
+                    variant="outline"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-3">
+              <Label>Health Goals</Label>
+              <div className="flex flex-wrap gap-2">
+                {(formValues.healthGoals || []).map((item, index) => (
+                  <Badge key={index} className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
+                    {item}
+                    {editMode && (
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-recipe-red" 
+                        onClick={() => removeItem('healthGoals', index)} 
+                      />
+                    )}
+                  </Badge>
+                ))}
+              </div>
+              
+              {editMode && (
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={newHealthGoal}
+                    onChange={(e) => setNewHealthGoal(e.target.value)}
+                    placeholder="E.g., Weight Loss, Muscle Gain, Low Carb"
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addItem('healthGoals', newHealthGoal, setNewHealthGoal);
+                      }
+                    }}
+                  />
+                  <Button 
+                    type="button" 
+                    onClick={() => addItem('healthGoals', newHealthGoal, setNewHealthGoal)}
+                    variant="outline"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-3">
+              <Label htmlFor="profileNotes">Additional Notes</Label>
+              {editMode ? (
+                <Textarea
+                  id="profileNotes"
+                  value={formValues.profileNotes || ''}
+                  onChange={(e) => handleInputChange('profileNotes', e.target.value)}
+                  placeholder="Add any additional information about your preferences or restrictions"
+                  rows={4}
+                />
+              ) : (
+                <div className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                  {profile.profileNotes || 'No additional notes provided.'}
+                </div>
+              )}
+            </div>
+          </CardContent>
         </Card>
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   );
 };
 
-export default UserProfilePage;
+export default UserProfile;

@@ -1,4 +1,4 @@
-﻿
+
 export interface CulinaryTerm {
   term: string;
   definition: string;
@@ -40,7 +40,7 @@ export interface Recipe {
     isRecipe?: boolean;
     content?: string;
     isFavorite: boolean;
-    user_id: string; // ✅ הוספת השדה החסר
+    user_id: string;
     tags?: string[];
     difficulty?: 'easy' | 'medium' | 'hard';
     estimatedTime?: string;
@@ -69,14 +69,16 @@ export interface Recipe {
     author?: string;
     publishedAt?: Date;
     imageBase64?: string;
+    // Flag to track if recipe is from community (to hide publish button)
+    isFromCommunity?: boolean;
 }
-
 
 export interface RecipeRequest {
   prompt: string;
   language?: string;
   imageBase64?: string;
   userPreferences?: UserPreferences;
+  respectPreferences?: boolean; // New field to control if AI should use preferences in recipe titles
 }
 
 export interface UserPreferences {
@@ -88,6 +90,8 @@ export interface UserPreferences {
   cookingSkillLevel?: 'beginner' | 'intermediate' | 'advanced';
   healthGoals?: string[];
   notes?: string;
+  // Flag to control if preferences should be mentioned in recipe titles
+  mentionInTitle?: boolean;
 }
 
 export interface UserProfile {
@@ -104,6 +108,7 @@ export interface UserProfile {
   avatarUrl?: string;
   updated_at?: string;
   created_at?: string;
+  mentionInTitle?: boolean; // Flag to control if preferences should be mentioned in recipe titles
 }
 
 export interface CookingTip {
@@ -164,4 +169,18 @@ export interface RecipeResponse {
   quickReplies?: QuickReply[];
   imageBase64?: string;
   status?: 'draft' | 'accepted' | 'rejected' | 'published';
+  user_id?: string;
+}
+
+export interface RecipeCardProps {
+  recipe: Recipe;
+  showActions: boolean;
+  className?: string;
+  onFavoriteToggle?: (id: string) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
+  onEdit?: (id: string) => void;
+  onRate?: (id: string, rating: number) => Promise<void>;
+  onPublish?: (id: string) => Promise<void>;
+  onUnpublish?: (id: string) => Promise<void>;
+  onLike?: (id: string) => Promise<void>;
 }

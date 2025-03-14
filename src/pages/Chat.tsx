@@ -7,17 +7,30 @@ import { useRecipes } from '@/hooks/useRecipes';
 import { useToast } from '@/components/ui/use-toast';
 import { CookingPot } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/hooks/useAuth';
 
 const Chat: React.FC = () => {
   const { addRecipe } = useRecipes();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleRecipeGenerated = async (recipe: RecipeResponse) => {
     try {
+      if (!user) {
+        toast({
+          variant: "destructive",
+          title: "Authentication Required",
+          description: "Please log in to save recipes.",
+        });
+        navigate('/auth');
+        return;
+      }
+
       // Accept or save as draft based on recipe quality
       const recipeWithStatus = {
         ...recipe,
+        user_id: user.id, // Add user_id
       };
       
       const newRecipe = await addRecipe(recipeWithStatus, recipe.isRecipe ? 'accepted' : 'draft');
@@ -43,9 +56,20 @@ const Chat: React.FC = () => {
 
   const handleRecipeRejected = async (recipe: RecipeResponse) => {
     try {
+      if (!user) {
+        toast({
+          variant: "default",
+          title: "Authentication Required",
+          description: "Please log in to save rejected recipes.",
+        });
+        navigate('/auth');
+        return;
+      }
+
       // Save rejected recipe with rejected status
       const recipeWithStatus = {
         ...recipe,
+        user_id: user.id, // Add user_id
       };
       
       await addRecipe(recipeWithStatus, 'rejected');
