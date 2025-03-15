@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { Eye, EyeOff, Lock, Mail, UserPlus, Loader2, ChefHat, ArrowRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 const Auth: React.FC = () => {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -18,7 +19,7 @@ const Auth: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
-  const { signIn, signUp, session, failedLoginAttempts, setFailedLoginAttempts } = useAuth();
+  const { signIn, signUp, session, failedLoginAttempts, setFailedLoginAttempts, resetPassword } = useAuth();
   const { toast } = useToast();
   
   const [showPassword, setShowPassword] = useState(false);
@@ -28,6 +29,65 @@ const Auth: React.FC = () => {
   const [resetSent, setResetSent] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  // Variants for animations
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { 
+        staggerChildren: 0.05,
+        delayChildren: 0.2
+      }
+    },
+    exit: {
+      opacity: 0,
+      transition: { 
+        staggerChildren: 0.05,
+        staggerDirection: -1 
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { 
+      y: 0, 
+      opacity: 1,
+      transition: { 
+        type: "spring",
+        stiffness: 300,
+        damping: 24
+      }
+    },
+    exit: { 
+      y: -20, 
+      opacity: 0,
+      transition: {
+        duration: 0.2
+      }
+    }
+  };
+
+  const logoVariants = {
+    hidden: { scale: 0.8, opacity: 0 },
+    visible: { 
+      scale: 1, 
+      opacity: 1,
+      transition: { 
+        type: "spring",
+        stiffness: 500,
+        damping: 30,
+        delay: 0.1
+      }
+    },
+    hovering: {
+      scale: 1.05,
+      rotate: [0, -5, 5, -5, 5, 0],
+      transition: {
+        duration: 0.5
+      }
+    }
+  };
   
   useEffect(() => {
     if (session) {
@@ -79,6 +139,8 @@ const Auth: React.FC = () => {
       console.error("Sign in error:", error);
       setErrorMessage("Invalid email or password.");
       setIsSubmitting(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -112,23 +174,20 @@ const Auth: React.FC = () => {
       return;
     }
     
-    if (!username.trim()) {
-      setUsername(email.split('@')[0]); // Use email prefix as default username
-    }
+    const displayUsername = username.trim() || email.split('@')[0];
     
     setIsSubmitting(true);
     
     try {
-      await signup(email, password, username.trim() || email.split('@')[0]);
+      await signUp(email, password, displayUsername);
       toast({
         title: "Account Created",
-        description: "Please check your email to verify your account.",
+        description: "Your account has been created successfully.",
       });
       setMode("signin");
     } catch (error) {
       console.error("Sign up error:", error);
       setErrorMessage("An error occurred while creating your account.");
-      setIsSubmitting(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -154,98 +213,146 @@ const Auth: React.FC = () => {
     } catch (error) {
       console.error("Reset password error:", error);
       setErrorMessage("An error occurred while sending the reset link.");
-      setIsSubmitting(false);
     } finally {
       setIsSubmitting(false);
     }
   };
   
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-recipe-green" />
-      </div>
-    );
-  }
-  
   if (showResetPassword) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-b from-green-50 to-white dark:from-gray-900 dark:to-gray-800">
+      <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-b from-green-50 to-white dark:from-gray-900/80 dark:to-gray-800/90 dark:bg-gradient-radial dark:bg-[size:200%_200%] dark:animate-gradient-background">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
+          transition={{ 
+            duration: 0.5, 
+            type: "spring",
+            stiffness: 200, 
+            damping: 20 
+          }}
           className="w-full max-w-md"
         >
-          <Card className="border-none shadow-xl bg-white/90 backdrop-blur-sm dark:bg-gray-900/90">
+          <Card className="border-none shadow-xl bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm">
             <CardHeader className="space-y-1">
-              <div className="flex items-center justify-center mb-2">
+              <motion.div 
+                className="flex items-center justify-center mb-2"
+                initial="hidden"
+                animate="visible"
+                whileHover="hovering"
+                variants={logoVariants}
+              >
                 <ChefHat className="h-10 w-10 text-recipe-green" />
-              </div>
-              <CardTitle className="text-2xl text-center">Reset Your Password</CardTitle>
-              <CardDescription className="text-center">
-                {resetSent 
-                  ? "Check your email for a password reset link" 
-                  : "Enter your email address and we'll send you a reset link"}
-              </CardDescription>
+              </motion.div>
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1, duration: 0.5 }}
+              >
+                <CardTitle className="text-2xl text-center">Reset Your Password</CardTitle>
+                <CardDescription className="text-center">
+                  {resetSent 
+                    ? "Check your email for a password reset link" 
+                    : "Enter your email address and we'll send you a reset link"}
+                </CardDescription>
+              </motion.div>
             </CardHeader>
             <CardContent>
               {!resetSent ? (
-                <form onSubmit={handleResetPassword} className="space-y-4">
-                  <div className="space-y-2">
+                <motion.form 
+                  onSubmit={handleResetPassword} 
+                  className="space-y-4"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  <motion.div className="space-y-2" variants={itemVariants}>
                     <Label htmlFor="reset-email">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <motion.div 
+                        className="absolute left-3 top-3 text-gray-400"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.2, type: "spring", stiffness: 500 }}
+                      >
+                        <Mail className="h-4 w-4" />
+                      </motion.div>
                       <Input
                         id="reset-email"
                         type="email"
                         placeholder="you@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10"
+                        className="pl-10 transition-all duration-300 focus:ring-2 focus:ring-recipe-green/50 focus:scale-[1.01] dark:bg-gray-800/50"
                         required
                       />
                     </div>
-                  </div>
+                  </motion.div>
                   
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-recipe-green hover:bg-recipe-green/90"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sending...
-                      </>
-                    ) : (
-                      "Send Reset Link"
-                    )}
-                  </Button>
-                </form>
+                  <motion.div variants={itemVariants}>
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-recipe-green hover:bg-recipe-green/90 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group"
+                      disabled={isSubmitting}
+                    >
+                      <motion.span 
+                        className="absolute inset-0 bg-white/20 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"
+                      />
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        "Send Reset Link"
+                      )}
+                    </Button>
+                  </motion.div>
+                </motion.form>
               ) : (
-                <div className="flex flex-col items-center space-y-4 py-4">
-                  <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/30">
+                <motion.div 
+                  className="flex flex-col items-center space-y-4 py-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  <motion.div 
+                    className="rounded-full bg-green-100 p-3 dark:bg-green-900/30"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                  >
                     <Mail className="h-8 w-8 text-recipe-green" />
-                  </div>
-                  <p className="text-center text-gray-600 dark:text-gray-300">
+                  </motion.div>
+                  <motion.p 
+                    className="text-center text-gray-600 dark:text-gray-300"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
                     We've sent an email to <strong>{email}</strong> with instructions to reset your password.
-                  </p>
-                </div>
+                  </motion.p>
+                </motion.div>
               )}
             </CardContent>
             <CardFooter>
-              <Button 
-                variant="ghost" 
+              <motion.div
                 className="w-full"
-                onClick={() => {
-                  setShowResetPassword(false);
-                  setFailedLoginAttempts(0);
-                  setMode("signin");
-                }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
-                Back to Sign In
-              </Button>
+                <Button 
+                  variant="ghost" 
+                  className="w-full hover:bg-recipe-green/10 transition-all duration-300"
+                  onClick={() => {
+                    setShowResetPassword(false);
+                    setFailedLoginAttempts(0);
+                    setMode("signin");
+                  }}
+                >
+                  Back to Sign In
+                </Button>
+              </motion.div>
             </CardFooter>
           </Card>
         </motion.div>
@@ -255,62 +362,104 @@ const Auth: React.FC = () => {
   
   return (
     <div className="flex flex-col min-h-screen">
-      <div className="flex-1 flex items-center justify-center p-4 bg-gradient-to-b from-green-50 to-white dark:from-gray-900 dark:to-gray-800">
+      <div className="flex-1 flex items-center justify-center p-4 bg-gradient-to-b from-green-50 to-white dark:from-gray-900/80 dark:to-gray-800/90 dark:bg-gradient-radial dark:bg-[size:200%_200%] dark:animate-gradient-background">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          <Card className="border-none shadow-xl bg-white/90 backdrop-blur-sm dark:bg-gray-900/90">
+          <Card className="border-none shadow-xl bg-white/90 backdrop-blur-sm dark:bg-gray-900/80 relative overflow-hidden">
+            <motion.div 
+              className="absolute inset-0 pointer-events-none opacity-20 dark:opacity-40"
+              animate={{ 
+                background: [
+                  "radial-gradient(circle at 20% 20%, rgba(34, 197, 94, 0.2) 0%, transparent 70%)",
+                  "radial-gradient(circle at 80% 80%, rgba(34, 197, 94, 0.2) 0%, transparent 70%)",
+                  "radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.2) 0%, transparent 70%)",
+                  "radial-gradient(circle at 20% 20%, rgba(34, 197, 94, 0.2) 0%, transparent 70%)"
+                ]
+              }}
+              transition={{ duration: 20, repeat: Infinity, repeatType: "loop" }}
+            />
+            
             <CardHeader className="space-y-1">
-              <div className="flex items-center justify-center mb-4">
+              <motion.div 
+                className="flex items-center justify-center mb-4"
+                initial="hidden"
+                animate="visible"
+                whileHover="hovering"
+                variants={logoVariants}
+              >
                 <ChefHat className="h-12 w-12 text-recipe-green" />
-              </div>
-              <CardTitle className="text-2xl text-center">Recipe Genius</CardTitle>
-              <CardDescription className="text-center">
-                {mode === "signin" 
-                  ? "Sign in to access your personalized recipes" 
-                  : "Create an account to save and share your recipes"}
-              </CardDescription>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <CardTitle className="text-2xl text-center">Recipe Genius</CardTitle>
+                <CardDescription className="text-center">
+                  {mode === "signin" 
+                    ? "Sign in to access your personalized recipes" 
+                    : "Create an account to save and share your recipes"}
+                </CardDescription>
+              </motion.div>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="signin" value={mode} onValueChange={setMode}>
+              <Tabs value={mode} onValueChange={(value) => {
+                if (value === "signin" || value === "signup") {
+                  setMode(value);
+                }
+              }}>
                 <TabsList className="grid w-full grid-cols-2 mb-4">
                   <TabsTrigger value="signin">Sign In</TabsTrigger>
                   <TabsTrigger value="signup">Sign Up</TabsTrigger>
                 </TabsList>
                 
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={mode}
-                    initial={{ opacity: 0, x: mode === "signin" ? -20 : 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: mode === "signin" ? 20 : -20 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <TabsContent value="signin" className="space-y-4">
-                      <form onSubmit={handleSignIn}>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="signin-email">Email</Label>
-                            <div className="relative">
-                              <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                              <Input
-                                id="signin-email"
-                                type="email"
-                                placeholder="you@example.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="pl-10 transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                                required
-                              />
-                            </div>
+                <motion.div
+                  key={mode}
+                  initial={{ opacity: 0, x: mode === "signin" ? -20 : 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: mode === "signin" ? 20 : -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <TabsContent value="signin" className="space-y-4">
+                    <motion.form 
+                      onSubmit={handleSignIn}
+                      variants={containerVariants}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                    >
+                      <div className="space-y-4">
+                        <motion.div className="space-y-2" variants={itemVariants}>
+                          <Label htmlFor="signin-email">Email</Label>
+                          <div className="relative">
+                            <motion.div 
+                              className="absolute left-3 top-3 text-gray-400"
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ delay: 0.2, type: "spring", stiffness: 500 }}
+                            >
+                              <Mail className="h-4 w-4" />
+                            </motion.div>
+                            <Input
+                              id="signin-email"
+                              type="email"
+                              placeholder="you@example.com"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              className="pl-10 transition-all duration-300 focus:ring-2 focus:ring-recipe-green/50 focus:scale-[1.01] dark:bg-gray-800/50"
+                              required
+                            />
                           </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label htmlFor="signin-password">Password</Label>
+                        </motion.div>
+                        
+                        <motion.div className="space-y-2" variants={itemVariants}>
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="signin-password">Password</Label>
+                            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                               <Button 
                                 type="button" 
                                 variant="link" 
@@ -319,35 +468,53 @@ const Auth: React.FC = () => {
                               >
                                 Forgot password?
                               </Button>
-                            </div>
-                            <div className="relative">
-                              <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                              <Input
-                                id="signin-password"
-                                type={showPassword ? "text" : "password"}
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="pl-10 transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                                required
-                              />
+                            </motion.div>
+                          </div>
+                          <div className="relative">
+                            <motion.div 
+                              className="absolute left-3 top-3 text-gray-400"
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ delay: 0.2, type: "spring", stiffness: 500 }}
+                            >
+                              <Lock className="h-4 w-4" />
+                            </motion.div>
+                            <Input
+                              id="signin-password"
+                              type={showPassword ? "text" : "password"}
+                              placeholder="••••••••"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              className="pl-10 transition-all duration-300 focus:ring-2 focus:ring-recipe-green/50 focus:scale-[1.01] dark:bg-gray-800/50"
+                              required
+                            />
+                            <motion.div 
+                              className="absolute right-0 top-0"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                            >
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="absolute right-0 top-0 h-10 w-10 text-gray-400"
+                                className="h-10 w-10 text-gray-400"
                                 onClick={() => setShowPassword(!showPassword)}
                               >
                                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                               </Button>
-                            </div>
+                            </motion.div>
                           </div>
-                          
+                        </motion.div>
+                        
+                        <motion.div variants={itemVariants}>
                           <Button 
                             type="submit" 
-                            className="w-full bg-recipe-green hover:bg-recipe-green/90 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                            className="w-full bg-recipe-green hover:bg-recipe-green/90 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group"
                             disabled={isSubmitting}
                           >
+                            <motion.span 
+                              className="absolute inset-0 bg-white/20 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"
+                            />
                             {isSubmitting ? (
                               <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -360,99 +527,150 @@ const Auth: React.FC = () => {
                               </>
                             )}
                           </Button>
-                        </div>
-                      </form>
-                    </TabsContent>
-                    
-                    <TabsContent value="signup" className="space-y-4">
-                      <form onSubmit={handleSignUp}>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="signup-email">Email</Label>
-                            <div className="relative">
-                              <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                              <Input
-                                id="signup-email"
-                                type="email"
-                                placeholder="you@example.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="pl-10 transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                                required
-                              />
-                            </div>
+                        </motion.div>
+                      </div>
+                    </motion.form>
+                  </TabsContent>
+                  
+                  <TabsContent value="signup" className="space-y-4">
+                    <motion.form 
+                      onSubmit={handleSignUp}
+                      variants={containerVariants}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                    >
+                      <div className="space-y-4">
+                        <motion.div className="space-y-2" variants={itemVariants}>
+                          <Label htmlFor="signup-email">Email</Label>
+                          <div className="relative">
+                            <motion.div 
+                              className="absolute left-3 top-3 text-gray-400"
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ delay: 0.2, type: "spring", stiffness: 500 }}
+                            >
+                              <Mail className="h-4 w-4" />
+                            </motion.div>
+                            <Input
+                              id="signup-email"
+                              type="email"
+                              placeholder="you@example.com"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              className="pl-10 transition-all duration-300 focus:ring-2 focus:ring-recipe-green/50 focus:scale-[1.01] dark:bg-gray-800/50"
+                              required
+                            />
                           </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="username">Username (optional)</Label>
-                            <div className="relative">
-                              <UserPlus className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                              <Input
-                                id="username"
-                                type="text"
-                                placeholder="Your display name"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="pl-10 transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                              />
-                            </div>
+                        </motion.div>
+                        
+                        <motion.div className="space-y-2" variants={itemVariants}>
+                          <Label htmlFor="username">Username (optional)</Label>
+                          <div className="relative">
+                            <motion.div 
+                              className="absolute left-3 top-3 text-gray-400"
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ delay: 0.2, type: "spring", stiffness: 500 }}
+                            >
+                              <UserPlus className="h-4 w-4" />
+                            </motion.div>
+                            <Input
+                              id="username"
+                              type="text"
+                              placeholder="Your display name"
+                              value={username}
+                              onChange={(e) => setUsername(e.target.value)}
+                              className="pl-10 transition-all duration-300 focus:ring-2 focus:ring-recipe-green/50 focus:scale-[1.01] dark:bg-gray-800/50"
+                            />
                           </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="signup-password">Password</Label>
-                            <div className="relative">
-                              <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                              <Input
-                                id="signup-password"
-                                type={showPassword ? "text" : "password"}
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="pl-10 transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                                required
-                              />
+                        </motion.div>
+                        
+                        <motion.div className="space-y-2" variants={itemVariants}>
+                          <Label htmlFor="signup-password">Password</Label>
+                          <div className="relative">
+                            <motion.div 
+                              className="absolute left-3 top-3 text-gray-400"
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ delay: 0.2, type: "spring", stiffness: 500 }}
+                            >
+                              <Lock className="h-4 w-4" />
+                            </motion.div>
+                            <Input
+                              id="signup-password"
+                              type={showPassword ? "text" : "password"}
+                              placeholder="••••••••"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              className="pl-10 transition-all duration-300 focus:ring-2 focus:ring-recipe-green/50 focus:scale-[1.01] dark:bg-gray-800/50"
+                              required
+                            />
+                            <motion.div 
+                              className="absolute right-0 top-0"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                            >
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="absolute right-0 top-0 h-10 w-10 text-gray-400"
+                                className="h-10 w-10 text-gray-400"
                                 onClick={() => setShowPassword(!showPassword)}
                               >
                                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                               </Button>
-                            </div>
+                            </motion.div>
                           </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="confirm-password">Confirm Password</Label>
-                            <div className="relative">
-                              <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                              <Input
-                                id="confirm-password"
-                                type={showConfirmPassword ? "text" : "password"}
-                                placeholder="••••••••"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="pl-10 transition-all duration-200 focus:ring-2 focus:ring-recipe-green/50"
-                                required
-                              />
+                        </motion.div>
+                        
+                        <motion.div className="space-y-2" variants={itemVariants}>
+                          <Label htmlFor="confirm-password">Confirm Password</Label>
+                          <div className="relative">
+                            <motion.div 
+                              className="absolute left-3 top-3 text-gray-400"
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ delay: 0.2, type: "spring", stiffness: 500 }}
+                            >
+                              <Lock className="h-4 w-4" />
+                            </motion.div>
+                            <Input
+                              id="confirm-password"
+                              type={showConfirmPassword ? "text" : "password"}
+                              placeholder="••••••••"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              className="pl-10 transition-all duration-300 focus:ring-2 focus:ring-recipe-green/50 focus:scale-[1.01] dark:bg-gray-800/50"
+                              required
+                            />
+                            <motion.div 
+                              className="absolute right-0 top-0"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                            >
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="absolute right-0 top-0 h-10 w-10 text-gray-400"
+                                className="h-10 w-10 text-gray-400"
                                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                               >
                                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                               </Button>
-                            </div>
+                            </motion.div>
                           </div>
-                          
+                        </motion.div>
+                        
+                        <motion.div variants={itemVariants}>
                           <Button 
                             type="submit" 
-                            className="w-full bg-recipe-green hover:bg-recipe-green/90 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                            className="w-full bg-recipe-green hover:bg-recipe-green/90 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group"
                             disabled={isSubmitting}
                           >
+                            <motion.span 
+                              className="absolute inset-0 bg-white/20 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"
+                            />
                             {isSubmitting ? (
                               <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -465,17 +683,22 @@ const Auth: React.FC = () => {
                               </>
                             )}
                           </Button>
-                        </div>
-                      </form>
-                    </TabsContent>
-                  </motion.div>
-                </AnimatePresence>
+                        </motion.div>
+                      </div>
+                    </motion.form>
+                  </TabsContent>
+                </motion.div>
               </Tabs>
             </CardContent>
             <CardFooter className="flex justify-center border-t pt-4">
-              <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+              <motion.p 
+                className="text-xs text-center text-gray-500 dark:text-gray-400"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
                 By signing up, you agree to our Terms of Service and Privacy Policy
-              </p>
+              </motion.p>
             </CardFooter>
           </Card>
         </motion.div>
